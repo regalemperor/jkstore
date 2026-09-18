@@ -1,13 +1,10 @@
 import ProductCard from "./product-card";
 import Container from "@/components/ui/container";
+import { productRepository } from "@/lib/data/product-repository";
 
-const products = [
-  { name: "Essential Tee", price: "₦18,000", tag: "New", visual: "bg-gradient-to-br from-zinc-100 via-zinc-300 to-zinc-500" },
-  { name: "Classic Overshirt", price: "₦32,000", tag: "Popular", visual: "bg-gradient-to-br from-stone-100 via-stone-300 to-stone-600" },
-  { name: "Everyday Sneakers", price: "₦45,000", tag: "Featured", visual: "bg-gradient-to-br from-slate-100 via-slate-300 to-slate-700" },
-];
+export default async function ProductGrid() {
+  const products = await productRepository.getFeaturedProducts();
 
-export default function ProductGrid() {
   return (
     <section id="shop" className="py-16">
       <Container>
@@ -19,7 +16,17 @@ export default function ProductGrid() {
           <a href="#shop" className="hidden text-sm font-semibold underline underline-offset-4 sm:block">View all</a>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => <ProductCard key={product.name} product={product} />)}
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={{
+                name: product.name,
+                price: `₦${(product.priceKobo / 100).toLocaleString("en-NG")}`,
+                tag: product.tag ?? "Featured",
+                visual: product.visual,
+              }}
+            />
+          ))}
         </div>
       </Container>
     </section>
