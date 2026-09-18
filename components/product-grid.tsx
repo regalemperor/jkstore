@@ -24,6 +24,7 @@ export default async function ProductGrid() {
                 price: `₦${(product.priceKobo / 100).toLocaleString("en-NG")}`,
                 tag: product.tag ?? "Featured",
                 visual: product.visual,
+                imageUrl: product.imageUrl,
               }}
             />
           ))}
