@@ -5,14 +5,21 @@ type Product = {
   price: string;
   tag: string;
   visual: string;
+  imageUrl?: string | null;
 };
 
 export default function ProductCard({ product }: { product: Product }) {
   return (
     <article className="group">
-      <div className={"relative aspect-[4/5] overflow-hidden rounded-3xl " + product.visual}>
+      <div
+        className={"relative aspect-[4/5] overflow-hidden rounded-3xl bg-cover bg-center " + product.visual}
+        style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}
+      >
         <Badge>{product.tag}</Badge>
-        <button type="button" className="absolute bottom-4 left-4 right-4 min-h-11 rounded-full bg-white py-3 text-sm font-semibold opacity-0 transition group-hover:opacity-100 focus:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+        <button
+          type="button"
+          className="absolute bottom-4 left-4 right-4 min-h-11 rounded-full bg-white py-3 text-sm font-semibold opacity-0 transition group-hover:opacity-100 focus:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
           Quick add
         </button>
       </div>
