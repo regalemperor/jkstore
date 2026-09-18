@@ -14,6 +14,10 @@ This project uses the Next.js App Router.
 - Tailwind CSS
 - Vercel-ready architecture
 
+### Deployment
+
+The `main` branch is reserved for production. Feature and development work is validated through preview deployments before merging.
+
 ## Roadmap
 
 1. Foundation
