@@ -8,6 +8,7 @@ export type Product = {
   priceKobo: number;
   category: ProductCategory;
   tag?: string;
+  imageUrl?: string | null;
   visual: string;
   isFeatured: boolean;
   isActive: boolean;
