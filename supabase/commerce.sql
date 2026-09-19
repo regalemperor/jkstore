@@ -369,6 +369,26 @@ begin
     raise exception 'Unsupported provider payment status';
   end if;
 
+  if p_webhook_event_key is not null
+     and exists (
+       select 1
+       from payment_transactions
+       where webhook_event_key = p_webhook_event_key
+     ) then
+    select o.status, o.payment_status,
+           exists (
+             select 1 from inventory_reservations r
+             where r.order_id = o.id and r.status = 'fulfilled'
+           )
+    into order_status, payment_status, fulfilled
+    from payment_transactions pt
+    join orders o on o.id = pt.order_id
+    where pt.webhook_event_key = p_webhook_event_key;
+
+    return next;
+    return;
+  end if;
+
   select * into locked_order
   from orders
   where id = p_order_id
