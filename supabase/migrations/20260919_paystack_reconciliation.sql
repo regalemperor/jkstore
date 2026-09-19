@@ -21,7 +21,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = public, auth
-as $
+as $function$
 declare
   locked_order orders%rowtype;
   locked_payment payment_transactions%rowtype;
@@ -173,7 +173,7 @@ begin
   from orders o
   where o.id = p_order_id;
 end;
-$;
+$function$;
 
 
 
