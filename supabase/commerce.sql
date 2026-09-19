@@ -157,3 +157,183 @@ create policy "Customers can read their own order events"
 -- No anon/authenticated INSERT, UPDATE, or DELETE policies are intentional.
 -- Order creation, payment verification, inventory mutation, and fulfillment
 -- must run through trusted server-side operations.
+
+
+-- Inventory reservations keep stock protected while a customer is completing payment.
+-- Reservations expire so abandoned/failed checkouts do not permanently consume stock.
+create table if not exists inventory_reservations (
+  id uuid primary key default gen_random_uuid(),
+  order_id uuid not null references orders(id) on delete restrict,
+  product_id uuid not null references products(id) on delete restrict,
+  quantity integer not null check (quantity > 0),
+  status text not null default 'reserved'
+    check (status in ('reserved', 'released', 'fulfilled')),
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now(),
+  released_at timestamptz
+);
+
+create index if not exists inventory_reservations_product_idx
+  on inventory_reservations(product_id, status, expires_at);
+
+create index if not exists inventory_reservations_order_idx
+  on inventory_reservations(order_id);
+
+alter table inventory_reservations enable row level security;
+
+-- Customers do not need direct access to reservation records.
+-- All reservation changes happen inside trusted checkout/payment operations.
+
+-- Atomically validates live catalog data, protects inventory, snapshots prices,
+-- and creates a pending order. The browser never supplies authoritative prices.
+create or replace function create_pending_order(
+  p_items jsonb,
+  p_customer_email text,
+  p_customer_name text,
+  p_customer_phone text,
+  p_shipping_address jsonb,
+  p_idempotency_key text
+)
+returns table (
+  order_id uuid,
+  total_kobo bigint,
+  payment_reference text
+)
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  item jsonb;
+  product_row products%rowtype;
+  requested_quantity integer;
+  subtotal bigint := 0;
+  order_uuid uuid;
+  payment_ref text;
+  existing_order orders%rowtype;
+  reservation_expiry timestamptz := now() + interval '30 minutes';
+begin
+  if p_idempotency_key is null or length(trim(p_idempotency_key)) < 16 then
+    raise exception 'Invalid idempotency key';
+  end if;
+
+  if p_customer_email is null or position('@' in p_customer_email) < 2 then
+    raise exception 'Valid customer email is required';
+  end if;
+
+  if p_customer_name is null or length(trim(p_customer_name)) < 2 then
+    raise exception 'Customer name is required';
+  end if;
+
+  if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
+    raise exception 'Cart cannot be empty';
+  end if;
+
+  -- Safe retry: return the original pending order instead of creating a duplicate.
+  select * into existing_order
+  from orders
+  where idempotency_key = p_idempotency_key
+  limit 1;
+
+  if existing_order.id is not null then
+    return query select existing_order.id, existing_order.total_kobo, existing_order.payment_reference;
+    return;
+  end if;
+
+  -- Lock products in deterministic UUID order to reduce concurrent checkout deadlocks.
+  for item in
+    select value
+    from jsonb_array_elements(p_items)
+    order by (value->>'productId')
+  loop
+    requested_quantity := (item->>'quantity')::integer;
+
+    if requested_quantity is null or requested_quantity < 1 or requested_quantity > 100 then
+      raise exception 'Invalid product quantity';
+    end if;
+
+    select * into product_row
+    from products
+    where id = (item->>'productId')::uuid
+      and is_active = true
+    for update;
+
+    if not found then
+      raise exception 'Product is unavailable';
+    end if;
+
+    if product_row.inventory_quantity <
+       requested_quantity + coalesce((
+         select sum(r.quantity)
+         from inventory_reservations r
+         where r.product_id = product_row.id
+           and r.status = 'reserved'
+           and r.expires_at > now()
+       ), 0) then
+      raise exception 'Insufficient stock for %', product_row.name;
+    end if;
+
+    subtotal := subtotal + (product_row.price_kobo * requested_quantity);
+  end loop;
+
+  order_uuid := gen_random_uuid();
+  payment_ref := 'JK-' || replace(order_uuid::text, '-', '');
+
+  insert into orders (
+    id, user_id, status, payment_status, currency,
+    subtotal_kobo, shipping_kobo, discount_kobo, total_kobo,
+    customer_email, customer_name, customer_phone, shipping_address,
+    idempotency_key, payment_reference
+  )
+  values (
+    order_uuid, auth.uid(), 'pending_payment', 'pending', 'NGN',
+    subtotal, 0, 0, subtotal,
+    lower(trim(p_customer_email)), trim(p_customer_name), trim(p_customer_phone),
+    p_shipping_address, p_idempotency_key, payment_ref
+  );
+
+  for item in
+    select value
+    from jsonb_array_elements(p_items)
+    order by (value->>'productId')
+  loop
+    requested_quantity := (item->>'quantity')::integer;
+
+    select * into product_row
+    from products
+    where id = (item->>'productId')::uuid
+      and is_active = true;
+
+    insert into order_items (
+      order_id, product_id, product_name, unit_price_kobo, quantity, line_total_kobo
+    )
+    values (
+      order_uuid, product_row.id, product_row.name, product_row.price_kobo,
+      requested_quantity, product_row.price_kobo * requested_quantity
+    );
+
+    insert into inventory_reservations (
+      order_id, product_id, quantity, status, expires_at
+    )
+    values (
+      order_uuid, product_row.id, requested_quantity, 'reserved', reservation_expiry
+    );
+  end loop;
+
+  insert into order_events (order_id, event_type, actor_type, metadata)
+  values (
+    order_uuid,
+    'order.created',
+    'system',
+    jsonb_build_object(
+      'reservation_expires_at', reservation_expiry,
+      'currency', 'NGN'
+    )
+  );
+
+  return query select order_uuid, subtotal, payment_ref;
+end;
+$$;
+
+revoke all on function create_pending_order(jsonb, text, text, text, jsonb, text) from public;
+grant execute on function create_pending_order(jsonb, text, text, text, jsonb, text) to anon, authenticated;
