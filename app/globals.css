@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #111111;
+  --muted: #737373;
+  --border: #e5e5e5;
+  --surface: #f5f5f5;
+  --inverse: #111111;
+  --inverse-foreground: #ffffff;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-full: 9999px;
+  --content-max-width: 80rem;
+  --gutter: 1.25rem;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+button, a { -webkit-tap-highlight-color: transparent; }
+
+button { cursor: pointer; }
+
+a, button { outline-color: transparent; }
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 3px;
+}
