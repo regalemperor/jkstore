@@ -42,8 +42,21 @@ export default function CheckoutPage() {
       if (!response.ok) throw new Error(data.error || "Unable to create order.");
 
       setOrder(data);
-      setStatus("Order secured. Payment integration is the next step.");
+      setStatus("Order secured. Redirecting to secure payment…");
+
+      const paymentResponse = await fetch("/api/paystack/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: data.orderId }),
+      });
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentResponse.ok || !paymentData.authorizationUrl) {
+        throw new Error(paymentData.error || "Unable to initialize payment.");
+      }
+
       clearCart();
+      window.location.assign(paymentData.authorizationUrl);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to create order.");
     }
