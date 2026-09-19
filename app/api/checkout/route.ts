@@ -58,13 +58,15 @@ export async function POST(request: Request) {
     }
 
     const order = Array.isArray(data) ? data[0] : data;
-    if (!order?.order_id || typeof order.total_kobo !== "number" || !order.payment_reference) {
+    const totalKobo = Number(order?.total_kobo);
+
+    if (!order?.order_id || !Number.isSafeInteger(totalKobo) || totalKobo < 0 || !order.payment_reference) {
       return NextResponse.json({ error: "Invalid checkout response." }, { status: 500 });
     }
 
     return NextResponse.json({
       orderId: order.order_id,
-      totalKobo: order.total_kobo,
+      totalKobo,
       paymentReference: order.payment_reference,
       paymentStatus: "pending",
     });
