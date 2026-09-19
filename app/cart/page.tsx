@@ -78,10 +78,10 @@ export default function CartPage() {
                 <p className="mt-3 text-xs leading-5 text-black/45">
                   Shipping, discounts, inventory and final pricing will be recalculated and verified on the server before payment.
                 </p>
-                <button type="button" disabled
-                  className="mt-6 w-full min-h-12 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white opacity-50">
-                  Checkout coming next
-                </button>
+                <Link href="/checkout"
+                  className="mt-6 flex w-full min-h-12 items-center justify-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white">
+                  Continue to checkout
+                </Link>
               </aside>
             </div>
           )}
