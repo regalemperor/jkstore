@@ -1,4 +1,5 @@
 import Container from "@/components/ui/container";
+import CartButton from "@/components/cart/cart-button";
 
 const navItems = ["New arrivals", "Men", "Women", "Accessories"];
 
@@ -13,7 +14,7 @@ export default function SiteHeader() {
         <div className="flex items-center gap-2">
           <button type="button" aria-label="Search" className="min-h-11 rounded-full px-3 text-lg hover:bg-black/5">⌕</button>
           <button type="button" aria-label="Account" className="min-h-11 rounded-full px-3 text-lg hover:bg-black/5">♙</button>
-          <button type="button" aria-label="Shopping bag" className="min-h-11 rounded-full px-3 text-sm font-semibold hover:bg-black/5">Bag</button>
+          <CartButton />
         </div>
       </Container>
     </header>
