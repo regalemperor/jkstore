@@ -2,6 +2,7 @@ import Link from "next/link";
 import Badge from "@/components/ui/badge";
 import Button from "@/components/ui/button";
 import Container from "@/components/ui/container";
+import AddToCartButton from "@/components/cart/add-to-cart-button";
 import { formatNaira } from "@/lib/format/money";
 import type { Product } from "@/lib/types/product";
 
@@ -16,24 +17,20 @@ export default function ProductDetail({ product }: { product: Product }) {
       <header className="border-b border-black/10">
         <Container className="flex items-center justify-between py-5">
           <Link href="/" className="text-xl font-black tracking-[-0.05em]">JKSTORE</Link>
-          <Link href="/" className="text-sm font-semibold underline underline-offset-4">Back to shop</Link>
+          <Link href="/cart" className="text-sm font-semibold underline underline-offset-4">Bag</Link>
         </Container>
       </header>
 
       <section className="py-10 md:py-16">
         <Container>
           <div className="grid gap-10 md:grid-cols-2 md:items-start md:gap-16">
-            <div
-              className={"relative aspect-[4/5] overflow-hidden rounded-3xl bg-cover bg-center " + product.visual}
-              style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}
-            >
+            <div className={"relative aspect-[4/5] overflow-hidden rounded-3xl bg-cover bg-center " + product.visual}
+              style={product.imageUrl ? { backgroundImage: `url(${product.imageUrl})` } : undefined}>
               {product.tag ? <Badge>{product.tag}</Badge> : null}
             </div>
 
             <div className="md:pt-4">
-              <p className="text-xs font-bold uppercase tracking-[0.25em] text-black/50">
-                {product.category.replace("-", " ")}
-              </p>
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-black/50">{product.category.replace("-", " ")}</p>
               <h1 className="mt-3 text-4xl font-black tracking-[-0.05em] md:text-5xl">{product.name}</h1>
               <p className="mt-5 text-2xl font-semibold">{formatNaira(product.priceKobo)}</p>
               <p className="mt-6 max-w-xl leading-7 text-black/65">{product.description}</p>
@@ -46,9 +43,7 @@ export default function ProductDetail({ product }: { product: Product }) {
               </div>
 
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <Button className={inStock ? "" : "pointer-events-none opacity-50"}>
-                  {inStock ? "Add to bag" : "Out of stock"}
-                </Button>
+                <AddToCartButton product={product} />
                 <Button href="#details" variant="secondary">Product details</Button>
               </div>
 
