@@ -77,6 +77,10 @@ async function getProducts(filters?: {
 }
 
 export const supabaseProductRepository = {
+  async getAllProducts() {
+    return getProducts();
+  },
+
   async getFeaturedProducts() {
     return getProducts({ featured: true });
   },
