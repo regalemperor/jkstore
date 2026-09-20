@@ -20,12 +20,7 @@ type CheckoutRequest = {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckoutRequest;
-    const items = Array.isArray(body.items)
-      ? body.items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        }))
-      : [];
+    const items = Array.isArray(body.items) ? body.items : [];
 
     const customer = body.customer;
     const idempotencyKey = body.idempotencyKey;
@@ -34,9 +29,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing checkout information." }, { status: 400 });
     }
 
-    if (items.some((item) => typeof item.productId !== "string" || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 100)) {
+    if (
+      items.some(
+        (item) =>
+          typeof item.productId !== "string" ||
+          !Number.isInteger(item.quantity) ||
+          item.quantity < 1 ||
+          item.quantity > 100,
+      )
+    ) {
       return NextResponse.json({ error: "Invalid cart items." }, { status: 400 });
     }
+
+    const normalizedItems = items.map((item) => ({
+      productId: item.productId as string,
+      quantity: item.quantity as number,
+    }));
 
     if (typeof customer.email !== "string" || typeof customer.name !== "string") {
       return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
@@ -44,7 +52,7 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase.rpc("create_pending_order", {
-      p_items: items,
+      p_items: normalizedItems,
       p_customer_email: customer.email.trim(),
       p_customer_name: customer.name.trim(),
       p_customer_phone: customer.phone?.trim() ?? "",
