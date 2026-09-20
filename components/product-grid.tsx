@@ -15,7 +15,7 @@ export default async function ProductGrid() {
             <p className="text-xs font-bold uppercase tracking-[0.25em] text-black/50">Shop</p>
             <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] md:text-4xl">Featured collection</h2>
           </div>
-          <Link href="#shop" className="hidden text-sm font-semibold underline underline-offset-4 sm:block">View all</Link>
+          <Link href="/products" className="hidden text-sm font-semibold underline underline-offset-4 sm:block">View all</Link>
         </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
