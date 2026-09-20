@@ -25,6 +25,7 @@ function isValidCheckoutItem(item: CheckoutItem): item is ValidCheckoutItem {
 
   return (
     typeof item.productId === "string" &&
+    typeof quantity === "number" &&
     Number.isInteger(quantity) &&
     quantity >= 1 &&
     quantity <= 100
