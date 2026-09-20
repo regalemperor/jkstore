@@ -20,6 +20,7 @@ export default function CheckoutCompleteClient({ reference }: { reference: strin
       return;
     }
 
+    const paymentReference = reference;
     let cancelled = false;
     let attempts = 0;
 
@@ -28,7 +29,7 @@ export default function CheckoutCompleteClient({ reference }: { reference: strin
 
       try {
         const response = await fetch(
-          `/api/paystack/verify?reference=${encodeURIComponent(reference)}`,
+          `/api/paystack/verify?reference=${encodeURIComponent(paymentReference)}`,
           { cache: "no-store" },
         );
         const data = await response.json();
