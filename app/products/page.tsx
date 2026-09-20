@@ -10,8 +10,23 @@ export const metadata = {
   description: "Browse the JKSTORE collection.",
 };
 
-export default async function ProductsPage() {
-  const products = await productRepository.getAllProducts();
+type ProductsPageProps = {
+  searchParams: Promise<{ category?: string }>;
+};
+
+const categories = ["new-arrivals", "men", "women", "accessories"] as const;
+
+export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const { category } = await searchParams;
+  const selectedCategory = categories.includes(category as (typeof categories)[number])
+    ? (category as (typeof categories)[number])
+    : undefined;
+  const products = selectedCategory
+    ? await productRepository.getProductsByCategory(selectedCategory)
+    : await productRepository.getAllProducts();
+  const pageTitle = selectedCategory
+    ? selectedCategory.replace("-", " ")
+    : "All products";
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -24,11 +39,10 @@ export default async function ProductsPage() {
               Shop
             </p>
             <h1 className="mt-3 text-4xl font-black tracking-[-0.05em] md:text-6xl">
-              All products
+              {pageTitle}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-black/60 md:text-lg">
-              Explore the current JKSTORE collection and find your next everyday
-              essential.
+              Explore the current JKSTORE collection and find your next everyday essential.
             </p>
           </Container>
         </section>
