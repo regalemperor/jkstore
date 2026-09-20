@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+type CheckoutItem = { productId?: string; quantity?: number };
+type ValidCheckoutItem = { productId: string; quantity: number };
+
 type CheckoutRequest = {
-  items?: Array<{ productId?: string; quantity?: number }>;
+  items?: CheckoutItem[];
   customer?: {
     email?: string;
     name?: string;
@@ -17,6 +20,15 @@ type CheckoutRequest = {
   idempotencyKey?: string;
 };
 
+function isValidCheckoutItem(item: CheckoutItem): item is ValidCheckoutItem {
+  return (
+    typeof item.productId === "string" &&
+    Number.isInteger(item.quantity) &&
+    item.quantity >= 1 &&
+    item.quantity <= 100
+  );
+}
+
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as CheckoutRequest;
@@ -29,22 +41,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing checkout information." }, { status: 400 });
     }
 
-    if (
-      items.some(
-        (item) =>
-          typeof item.productId !== "string" ||
-          !Number.isInteger(item.quantity) ||
-          item.quantity < 1 ||
-          item.quantity > 100,
-      )
-    ) {
+    if (!items.every(isValidCheckoutItem)) {
       return NextResponse.json({ error: "Invalid cart items." }, { status: 400 });
     }
-
-    const normalizedItems = items.map((item) => ({
-      productId: item.productId as string,
-      quantity: item.quantity as number,
-    }));
 
     if (typeof customer.email !== "string" || typeof customer.name !== "string") {
       return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
@@ -52,7 +51,7 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServerClient();
     const { data, error } = await supabase.rpc("create_pending_order", {
-      p_items: normalizedItems,
+      p_items: items,
       p_customer_email: customer.email.trim(),
       p_customer_name: customer.name.trim(),
       p_customer_phone: customer.phone?.trim() ?? "",
