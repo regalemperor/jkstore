@@ -21,11 +21,13 @@ type CheckoutRequest = {
 };
 
 function isValidCheckoutItem(item: CheckoutItem): item is ValidCheckoutItem {
+  const quantity = item.quantity;
+
   return (
     typeof item.productId === "string" &&
-    Number.isInteger(item.quantity) &&
-    item.quantity >= 1 &&
-    item.quantity <= 100
+    Number.isInteger(quantity) &&
+    quantity >= 1 &&
+    quantity <= 100
   );
 }
 
