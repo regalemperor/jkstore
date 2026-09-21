@@ -6,13 +6,50 @@ import Container from "@/components/ui/container";
 import { useCart } from "@/components/cart/cart-provider";
 import { formatNaira } from "@/lib/format/money";
 
+type Order = {
+  orderId: string;
+  totalKobo: number;
+  paymentReference: string;
+};
+
 export default function CheckoutPage() {
   const { items, subtotalKobo, clearCart } = useCart();
   const [status, setStatus] = useState<string | null>(null);
-  const [order, setOrder] = useState<{ orderId: string; totalKobo: number; paymentReference: string } | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
+  const [paymentError, setPaymentError] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  async function initializePayment(orderToPay: Order) {
+    setProcessing(true);
+    setPaymentError(false);
+    setStatus("Initializing secure payment…");
+
+    try {
+      const paymentResponse = await fetch("/api/paystack/initialize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: orderToPay.orderId }),
+      });
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentResponse.ok || !paymentData.authorizationUrl) {
+        throw new Error(paymentData.error || "Unable to initialize payment.");
+      }
+
+      clearCart();
+      window.location.assign(paymentData.authorizationUrl);
+    } catch (error) {
+      setPaymentError(true);
+      setStatus(error instanceof Error ? error.message : "Unable to initialize payment.");
+    } finally {
+      setProcessing(false);
+    }
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setProcessing(true);
+    setPaymentError(false);
     setStatus("Securing your order…");
 
     const form = new FormData(event.currentTarget);
@@ -41,24 +78,17 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to create order.");
 
-      setOrder(data);
-      setStatus("Order secured. Redirecting to secure payment…");
+      const createdOrder: Order = {
+        orderId: data.orderId,
+        totalKobo: data.totalKobo,
+        paymentReference: data.paymentReference,
+      };
 
-      const paymentResponse = await fetch("/api/paystack/initialize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: data.orderId }),
-      });
-      const paymentData = await paymentResponse.json();
-
-      if (!paymentResponse.ok || !paymentData.authorizationUrl) {
-        throw new Error(paymentData.error || "Unable to initialize payment.");
-      }
-
-      clearCart();
-      window.location.assign(paymentData.authorizationUrl);
+      setOrder(createdOrder);
+      await initializePayment(createdOrder);
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to create order.");
+      setProcessing(false);
     }
   }
 
@@ -90,14 +120,38 @@ export default function CheckoutPage() {
 
           {order ? (
             <div className="mt-8 rounded-3xl border border-neutral-200 p-7">
-              <p className="text-sm font-semibold">Order created successfully.</p>
+              <p className="text-sm font-semibold">
+                {paymentError ? "Order created — payment still needs to be started." : "Order created successfully."}
+              </p>
               <p className="mt-3 text-sm text-black/60">Order ID: {order.orderId}</p>
               <p className="mt-1 text-sm text-black/60">Amount secured: {formatNaira(order.totalKobo)}</p>
               <p className="mt-1 text-sm text-black/60">Payment reference: {order.paymentReference}</p>
-              <p className="mt-5 text-sm leading-6 text-black/60">
-                Payment is not marked as successful yet. The next step will initialize Paystack from the server and verify payment before any order is fulfilled.
-              </p>
-              <Link href="/" className="mt-7 inline-flex min-h-11 items-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white">Continue shopping</Link>
+
+              {paymentError ? (
+                <>
+                  <p className="mt-5 text-sm leading-6 text-black/60">
+                    Your order is safely recorded, but the secure payment session could not be initialized. No payment has been marked as successful.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void initializePayment(order)}
+                    disabled={processing}
+                    className="mt-7 inline-flex min-h-11 items-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {processing ? "Initializing payment…" : "Retry secure payment"}
+                  </button>
+                </>
+              ) : (
+                <p className="mt-5 text-sm leading-6 text-black/60">
+                  Redirecting you to secure payment. Payment will only be marked successful after server-side verification.
+                </p>
+              )}
+
+              {status ? <p className="mt-4 text-sm text-black/60">{status}</p> : null}
+
+              <Link href="/" className="mt-7 inline-flex min-h-11 items-center rounded-full border border-black px-6 py-3 text-sm font-semibold">
+                Continue shopping
+              </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -133,8 +187,12 @@ export default function CheckoutPage() {
                 <p className="mt-3 text-xs leading-5 text-black/45">
                   The server will ignore browser prices and recalculate every product, quantity and total from the live catalog before creating the order.
                 </p>
-                <button type="submit" className="mt-6 w-full min-h-12 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white">
-                  Secure order
+                <button
+                  type="submit"
+                  disabled={processing}
+                  className="mt-6 w-full min-h-12 rounded-full bg-black px-6 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {processing ? "Securing order…" : "Secure order"}
                 </button>
                 {status ? <p className="mt-4 text-sm text-black/60">{status}</p> : null}
               </aside>
