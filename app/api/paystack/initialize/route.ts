@@ -25,8 +25,25 @@ export async function POST(request: Request) {
       .single();
 
     if (orderError || !order) {
-      console.error("Paystack initialization order lookup failed:", orderError?.message ?? "Order not found");
-      return NextResponse.json({ error: "Order not found." }, { status: 404 });
+      console.error("Paystack initialization order lookup failed:", {
+        code: orderError?.code ?? null,
+        message: orderError?.message ?? "Order not found",
+        details: orderError?.details ?? null,
+        hint: orderError?.hint ?? null,
+      });
+
+      const isSupabaseAuthFailure =
+        orderError?.code === "401" ||
+        /invalid api key|jwt/i.test(orderError?.message ?? "");
+
+      return NextResponse.json(
+        {
+          error: isSupabaseAuthFailure
+            ? "Payment service database authentication failed."
+            : "Order not found.",
+        },
+        { status: isSupabaseAuthFailure ? 503 : 404 },
+      );
     }
 
     if (order.status !== "pending_payment" || order.payment_status !== "pending") {
@@ -47,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order payment details are invalid." }, { status: 409 });
     }
 
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
     if (!secretKey) {
       console.error("Paystack initialization failed: PAYSTACK_SECRET_KEY is missing.");
       return NextResponse.json({ error: "Payment service is not configured." }, { status: 503 });
