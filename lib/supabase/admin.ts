@@ -1,12 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 
 function getAdminConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SECRET_KEY;
+  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim();
+  const key = (
+    process.env.SUPABASE_SECRET_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )?.trim();
 
   if (!url || !key) {
     throw new Error(
-      "Missing server-only Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY.",
+      "Missing server-only Supabase configuration. Set SUPABASE_URL and SUPABASE_SECRET_KEY.",
     );
   }
 
@@ -20,6 +23,7 @@ export function createSupabaseAdminClient() {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+      detectSessionInUrl: false,
     },
   });
 }
