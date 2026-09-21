@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 type RequestBody = {
   orderId?: string;
 };
@@ -22,6 +25,7 @@ export async function POST(request: Request) {
       .single();
 
     if (orderError || !order) {
+      console.error("Paystack initialization order lookup failed:", orderError?.message ?? "Order not found");
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
 
@@ -34,10 +38,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid order amount." }, { status: 409 });
     }
 
+    if (
+      typeof order.customer_email !== "string" ||
+      !order.customer_email.trim() ||
+      typeof order.payment_reference !== "string" ||
+      !order.payment_reference.trim()
+    ) {
+      return NextResponse.json({ error: "Order payment details are invalid." }, { status: 409 });
+    }
+
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!secretKey) {
+      console.error("Paystack initialization failed: PAYSTACK_SECRET_KEY is missing.");
       return NextResponse.json({ error: "Payment service is not configured." }, { status: 503 });
     }
+
+    const origin = new URL(request.url).origin;
 
     const paystackResponse = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
@@ -46,11 +62,11 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        email: order.customer_email,
+        email: order.customer_email.trim(),
         amount: String(amount),
         currency: "NGN",
         reference: order.payment_reference,
-        callback_url: `${new URL(request.url).origin}/checkout/complete`,
+        callback_url: `${origin}/checkout/complete`,
         metadata: {
           order_id: order.id,
         },
@@ -61,7 +77,11 @@ export async function POST(request: Request) {
     const paystackData = await paystackResponse.json();
 
     if (!paystackResponse.ok || !paystackData?.status || !paystackData?.data?.authorization_url) {
-      console.error("Paystack initialization failed:", paystackData?.message ?? "Unknown error");
+      console.error("Paystack initialization failed:", {
+        status: paystackResponse.status,
+        message: paystackData?.message ?? "Unknown error",
+        reference: order.payment_reference,
+      });
       return NextResponse.json({ error: "Unable to initialize payment." }, { status: 502 });
     }
 
