@@ -56,6 +56,11 @@ create table if not exists payment_transactions (
   provider_reference text not null unique,
   provider_transaction_id text unique,
   amount_kobo bigint not null check (amount_kobo >= 0),
+  order_amount_kobo bigint not null check (order_amount_kobo >= 0),
+  expected_customer_charge_kobo bigint not null check (expected_customer_charge_kobo >= 0),
+  fee_mode text not null default 'absorb'
+    check (fee_mode in ('absorb', 'pass_to_customer')),
+  provider_fee_kobo bigint check (provider_fee_kobo is null or provider_fee_kobo >= 0),
   currency text not null default 'NGN'
     check (currency = 'NGN'),
   status text not null default 'pending'
@@ -337,7 +342,8 @@ $$;
 
 
 -- Atomically reconciles a verified Paystack transaction with its order.
--- The server must verify the transaction with Paystack before calling this function.
+-- expected_customer_charge_kobo is the authoritative amount the customer must pay.
+-- This allows Paystack dashboard fee pass-through without weakening amount validation.
 create or replace function reconcile_paystack_payment(
   p_order_id uuid,
   p_provider_reference text,
@@ -356,10 +362,11 @@ returns table (
 language plpgsql
 security definer
 set search_path = public, auth
-as $
+as $$
 declare
   locked_order orders%rowtype;
   locked_payment payment_transactions%rowtype;
+  provider_fee bigint;
 begin
   if p_currency <> 'NGN' then
     raise exception 'Unsupported payment currency';
@@ -371,8 +378,7 @@ begin
 
   if p_webhook_event_key is not null
      and exists (
-       select 1
-       from payment_transactions
+       select 1 from payment_transactions
        where webhook_event_key = p_webhook_event_key
      ) then
     select o.status, o.payment_status,
@@ -402,10 +408,6 @@ begin
     raise exception 'Payment reference does not match order';
   end if;
 
-  if locked_order.total_kobo <> p_amount_kobo then
-    raise exception 'Payment amount does not match order total';
-  end if;
-
   select * into locked_payment
   from payment_transactions
   where order_id = p_order_id
@@ -416,24 +418,38 @@ begin
     raise exception 'Payment transaction record not found';
   end if;
 
-  if locked_payment.amount_kobo <> p_amount_kobo
-     or locked_payment.currency <> p_currency then
-    raise exception 'Payment transaction does not match order';
+  if locked_payment.order_amount_kobo <> locked_order.total_kobo then
+    raise exception 'Payment ledger order amount does not match order total';
+  end if;
+
+  if locked_payment.expected_customer_charge_kobo <> p_amount_kobo then
+    raise exception 'Payment amount does not match expected customer charge';
+  end if;
+
+  if locked_payment.currency <> p_currency then
+    raise exception 'Payment currency does not match order';
   end if;
 
   if p_provider_transaction_id is not null
      and exists (
-       select 1
-       from payment_transactions pt
+       select 1 from payment_transactions pt
        where pt.provider_transaction_id = p_provider_transaction_id
          and pt.id <> locked_payment.id
      ) then
     raise exception 'Provider transaction already belongs to another payment';
   end if;
 
+  provider_fee := case
+    when jsonb_typeof(p_metadata->'fees') = 'number'
+      then (p_metadata->>'fees')::bigint
+    else null
+  end;
+
   if p_provider_status = 'success' then
     update payment_transactions
     set provider_transaction_id = coalesce(p_provider_transaction_id, provider_transaction_id),
+        amount_kobo = p_amount_kobo,
+        provider_fee_kobo = provider_fee,
         status = 'success',
         verified_at = coalesce(verified_at, now()),
         verification_metadata = coalesce(verification_metadata, '{}'::jsonb) || coalesce(p_metadata, '{}'::jsonb),
@@ -460,15 +476,19 @@ begin
           'provider', 'paystack',
           'provider_reference', p_provider_reference,
           'provider_transaction_id', p_provider_transaction_id,
-          'amount_kobo', p_amount_kobo
+          'order_amount_kobo', locked_payment.order_amount_kobo,
+          'customer_charge_kobo', p_amount_kobo,
+          'provider_fee_kobo', provider_fee,
+          'fee_mode', locked_payment.fee_mode
         )
       );
     end if;
   elsif p_provider_status in ('failed', 'reversed', 'refunded') then
-    -- A previously paid order is never silently downgraded by a customer callback.
     if locked_order.status = 'pending_payment' and locked_order.payment_status = 'pending' then
       update payment_transactions
       set provider_transaction_id = coalesce(p_provider_transaction_id, provider_transaction_id),
+          amount_kobo = p_amount_kobo,
+          provider_fee_kobo = provider_fee,
           status = p_provider_status,
           verified_at = coalesce(verified_at, now()),
           verification_metadata = coalesce(verification_metadata, '{}'::jsonb) || coalesce(p_metadata, '{}'::jsonb),
@@ -508,7 +528,7 @@ begin
   from orders o
   where o.id = p_order_id;
 end;
-$;
+$$;
 
 revoke all on function reconcile_paystack_payment(uuid, text, text, bigint, text, text, jsonb, text) from public;
 grant execute on function reconcile_paystack_payment(uuid, text, text, bigint, text, text, jsonb, text) to service_role;
