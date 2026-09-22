@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { calculateExpectedCustomerChargeKobo, getPaystackFeeMode } from "@/lib/paystack/fees";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -53,6 +54,18 @@ export async function POST(request: Request) {
     const amount = Number(order.total_kobo);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       return NextResponse.json({ error: "Invalid order amount." }, { status: 409 });
+    }
+
+    const feeMode = getPaystackFeeMode();
+    const orderAmountKobo = BigInt(amount);
+    const expectedCustomerChargeKobo =
+      feeMode === "pass_to_customer"
+        ? calculateExpectedCustomerChargeKobo(orderAmountKobo)
+        : orderAmountKobo;
+    const expectedCustomerCharge = Number(expectedCustomerChargeKobo);
+
+    if (!Number.isSafeInteger(expectedCustomerCharge) || expectedCustomerCharge <= 0) {
+      return NextResponse.json({ error: "Invalid customer charge." }, { status: 409 });
     }
 
     if (
@@ -109,7 +122,10 @@ export async function POST(request: Request) {
           order_id: order.id,
           provider: "paystack",
           provider_reference: order.payment_reference,
-          amount_kobo: amount,
+          amount_kobo: expectedCustomerCharge,
+          order_amount_kobo: amount,
+          expected_customer_charge_kobo: expectedCustomerCharge,
+          fee_mode: feeMode,
           currency: "NGN",
           status: "pending",
           verification_metadata: {
