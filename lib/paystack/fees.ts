@@ -43,8 +43,7 @@ export function calculateExpectedCustomerChargeKobo(orderAmountKobo: bigint): bi
 
   // ((price + flat fee) / (1 - 1.5%)) + ₦0.01
   // Represent the denominator as 985/1000 and floor to kobo.
-  const numerator =
-    (orderAmountKobo + flatFee) * 1000n + 10n * 985n;
+  const grossUpKobo = ((orderAmountKobo + flatFee) * 1000n) / 985n;
 
-  return numerator / 985n;
+  return grossUpKobo + 1n;
 }
