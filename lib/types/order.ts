@@ -40,6 +40,7 @@ export type Order = {
   shippingAddress?: Record<string, unknown> | null;
   idempotencyKey?: string | null;
   paymentReference?: string | null;
+  guestAccessExpiresAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -51,6 +52,10 @@ export type PaymentTransaction = {
   providerReference: string;
   providerTransactionId?: string | null;
   amountKobo: number;
+  orderAmountKobo?: number;
+  expectedCustomerChargeKobo?: number;
+  feeMode?: "absorb" | "pass_to_customer";
+  providerFeeKobo?: number | null;
   currency: "NGN";
   status: PaymentStatus;
   verifiedAt?: string | null;
