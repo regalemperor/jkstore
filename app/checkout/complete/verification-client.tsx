@@ -109,7 +109,12 @@ export default function CheckoutCompleteClient({ reference }: { reference: strin
               <h1 className="mt-3 text-4xl font-black tracking-[-0.05em]">Order secured.</h1>
               <p className="mt-4 text-black/60">Your payment was verified server-side. Your order can now move into fulfillment.</p>
               {state.orderId ? <p className="mt-4 text-sm text-black/50">Order ID: {state.orderId}</p> : null}
-              <Link href="/" className="mt-8 inline-flex min-h-11 items-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white">Continue shopping</Link>
+              {state.orderId ? (
+                <Link href={`/orders/${state.orderId}`} className="mt-8 mr-3 inline-flex min-h-11 items-center rounded-full bg-black px-6 py-3 text-sm font-semibold text-white">
+                  View order
+                </Link>
+              ) : null}
+              <Link href="/" className="mt-8 inline-flex min-h-11 items-center rounded-full border border-black px-6 py-3 text-sm font-semibold">Continue shopping</Link>
             </>
           ) : state.status === "pending" ? (
             <>
