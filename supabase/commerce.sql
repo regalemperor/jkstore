@@ -460,13 +460,25 @@ begin
     raise exception 'Cart cannot be empty';
   end if;
 
-  -- Safe retry: reuse the original order but rotate its guest access token.
+  -- Safe retry: rotate access only while the existing checkout reservation is valid.
   select * into existing_order
   from orders
   where idempotency_key = p_idempotency_key
   limit 1;
 
   if existing_order.id is not null then
+    if existing_order.status = 'pending_payment'
+       and existing_order.payment_status = 'pending'
+       and not exists (
+         select 1
+         from inventory_reservations r
+         where r.order_id = existing_order.id
+           and r.status = 'reserved'
+           and r.expires_at > now()
+       ) then
+      raise exception 'Checkout session expired; please create a new order';
+    end if;
+
     update orders
     set guest_access_token_hash = p_guest_access_token_hash,
         guest_access_expires_at = p_guest_access_expires_at
