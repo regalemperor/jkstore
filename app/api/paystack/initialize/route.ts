@@ -51,6 +51,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order is not payable." }, { status: 409 });
     }
 
+    const { data: reservation, error: reservationError } = await supabase
+      .from("inventory_reservations")
+      .select("id")
+      .eq("order_id", order.id)
+      .eq("status", "reserved")
+      .gt("expires_at", new Date().toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (reservationError) {
+      console.error("Paystack initialization reservation lookup failed:", reservationError.message);
+      return NextResponse.json({ error: "Unable to validate checkout reservation." }, { status: 500 });
+    }
+
+    if (!reservation) {
+      return NextResponse.json(
+        { error: "Checkout session has expired. Please return to checkout and create a new order." },
+        { status: 409 },
+      );
+    }
+
     const amount = Number(order.total_kobo);
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       return NextResponse.json({ error: "Invalid order amount." }, { status: 409 });
