@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyPaystackTransaction } from "@/lib/paystack/verify";
@@ -47,12 +48,50 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unable to reconcile payment." }, { status: 500 });
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       orderId: payment.order_id,
       status: data[0].order_status,
       paymentStatus: data[0].payment_status,
       verifiedStatus: verified.status,
     });
+
+    if (data[0].payment_status === "success") {
+      const guestAccessToken = randomBytes(32).toString("base64url");
+      const guestAccessTokenHash = createHash("sha256")
+        .update(guestAccessToken, "utf8")
+        .digest("hex");
+      const guestAccessExpiresAt = new Date(
+        Date.now() + 7 * 24 * 60 * 60 * 1000,
+      ).toISOString();
+
+      const { error: accessError } = await supabase
+        .from("orders")
+        .update({
+          guest_access_token_hash: guestAccessTokenHash,
+          guest_access_expires_at: guestAccessExpiresAt,
+        })
+        .eq("id", payment.order_id);
+
+      if (accessError) {
+        console.error("Guest order access refresh failed:", accessError.message);
+        return NextResponse.json(
+          { error: "Payment verified, but order access could not be secured." },
+          { status: 500 },
+        );
+      }
+
+      response.cookies.set({
+        name: "__Host-jkstore-order-access",
+        value: guestAccessToken,
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("Paystack verification error:", error);
     return NextResponse.json({ error: "Unable to verify payment." }, { status: 502 });
