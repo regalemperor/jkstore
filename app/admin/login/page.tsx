@@ -1,10 +1,10 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next")?.startsWith("/admin/") ? searchParams.get("next")! : "/admin";
   const [email, setEmail] = useState("");
@@ -77,5 +77,14 @@ export default function AdminLoginPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<main className="min-h-screen px-6 py-16"><div className="mx-auto max-w-md"><p className="text-sm text-black/60">Loading sign-in…</p></div></main>}>
+      <AdminLoginForm />
+    </Suspense>
   );
 }
