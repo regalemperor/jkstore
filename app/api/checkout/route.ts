@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       .digest("hex");
     const guestAccessExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.rpc("create_pending_order", {
       p_items: items,
       p_customer_email: customer.email.trim(),
