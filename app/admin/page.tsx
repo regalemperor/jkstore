@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/admin";
+import AdminLogout from "@/app/admin/admin-logout";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function AdminHomePage() {
               Signed in as {admin.email ?? "authorized operator"} · {admin.role}
             </p>
           </div>
+          <AdminLogout />
         </div>
 
         <section className="mt-10 grid gap-5 md:grid-cols-3">
