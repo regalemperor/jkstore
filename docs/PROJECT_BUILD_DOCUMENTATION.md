@@ -578,3 +578,26 @@ Admin reads and mutations require the server-side admin boundary. Mutation reque
 
 ### Remaining risks
 Rate limiting and abuse controls remain Phase 8. Refund/cancellation and inventory mutation remain outside this phase.
+
+
+## 15. Phase 7.3 implementation checkpoint
+
+### Implemented
+- Admin Orders navigation enabled on desktop and mobile.
+- Bounded order list API with 25-row default page size and 100-row hard maximum.
+- Search by order ID, payment reference, customer email/name/phone.
+- Fulfillment and payment-status filters.
+- Admin order detail API.
+- Order items, customer/delivery information, payment summary and event timeline.
+- Payment transaction presentation excludes verification metadata and secrets.
+- Atomic database fulfillment transition function.
+- Database role validation for transition actors.
+- Origin validation on browser mutation requests.
+- Valid transition enforcement: paid → processing → shipped → delivered.
+- Successful transition audit events.
+- Admin order list/detail UI responsive for desktop and iPhone.
+
+### Current verification gate
+Code is committed to `dev/foundation`. The Supabase migration `supabase/migrations/20260925_admin_order_management.sql` must be applied successfully before fulfillment mutation testing.
+
+Phase 7.3 remains **IN PROGRESS** until deployment/build verification, migration verification and authenticated acceptance testing are complete.
