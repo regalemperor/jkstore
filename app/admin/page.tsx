@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth/admin";
 import AdminLogout from "@/app/admin/admin-logout";
+import AdminShell from "@/app/admin/admin-shell";
 import { getAdminDashboardMetrics } from "@/lib/admin/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,8 @@ export default async function AdminHomePage() {
   const metrics = await getAdminDashboardMetrics();
 
   return (
-    <div>
+    <AdminShell email={admin.email} role={admin.role}>
+      <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-sm text-black/50">{admin.email ?? "authorized operator"} · {admin.role}</p>
@@ -66,6 +68,7 @@ export default async function AdminHomePage() {
           </div>
         </article>
       </section>
-    </div>
+      </div>
+    </AdminShell>
   );
 }
