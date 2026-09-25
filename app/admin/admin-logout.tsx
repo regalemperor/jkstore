@@ -1,26 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function AdminLogout() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   async function handleLogout() {
     setLoading(true);
 
-    const supabase = createSupabaseBrowserClient();
-    const { error } = await supabase.auth.signOut();
+    const response = await fetch("/auth/signout", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+    });
 
-    if (error) {
+    if (!response.ok) {
       setLoading(false);
       return;
     }
 
-    router.replace("/admin/login");
-    router.refresh();
+    window.location.assign("/admin/login");
   }
 
   return (
