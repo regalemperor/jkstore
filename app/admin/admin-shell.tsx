@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import AdminMobileNav from "@/app/admin/admin-mobile-nav";
 
 const sections = [
   { label: "Dashboard", href: "/admin", active: true },
@@ -72,6 +73,7 @@ export default function AdminShell({
               </p>
               <h1 className="mt-1 text-xl font-semibold">Dashboard</h1>
             </div>
+            <AdminMobileNav />
             <Link
               href="/"
               className="rounded-full border border-black/10 px-4 py-2 text-sm font-semibold hover:bg-neutral-50"
