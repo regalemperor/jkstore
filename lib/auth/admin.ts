@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -39,4 +40,20 @@ export async function requireAdmin() {
   }
 
   return admin;
+}
+
+export async function requireAdminApi() {
+  const admin = await getCurrentAdmin();
+
+  if (!admin) {
+    return {
+      admin: null,
+      response: NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": "no-store" } },
+      ),
+    };
+  }
+
+  return { admin, response: null };
 }
