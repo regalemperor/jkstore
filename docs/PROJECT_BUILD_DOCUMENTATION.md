@@ -309,7 +309,7 @@ Verified:
 - legacy RPC restriction
 
 ### Phase 7.1 — Admin Identity & Authorization
-Status: IN PROGRESS
+Status: COMPLETE
 
 Implemented:
 - admin role table
@@ -321,20 +321,21 @@ Implemented:
 - admin dashboard foundation
 - logout control
 
-Still required:
-- provision first owner/admin account
-- authenticated admin test
-- non-admin rejection test
-- session persistence test
-- logout test
-- final security review of the admin boundary
+Verified:
+- official owner account provisioned
+- authenticated admin login
+- owner role resolution
+- session persistence after refresh
+- logout
+- unauthenticated redirect back to admin login
+- admin boundary acceptance testing
 
 ## 10. Remaining roadmap
 
 ### Phase 7 — Admin / Store Management
 
-7.1 Admin identity & authorization  
-7.2 Dashboard architecture  
+7.1 Admin identity & authorization — COMPLETE  
+7.2 Dashboard architecture — IN PROGRESS  
 7.3 Order management  
 7.4 Inventory management  
 7.5 Product management  
@@ -390,6 +391,88 @@ Still required:
 - live-site smoke tests
 - final documentation
 - generate final PDF project record
+
+
+
+## 10.1 Phase 7.2 — Dashboard architecture
+
+### Architectural decision
+
+The admin dashboard is the operational control surface for JKSTORE. It is protected by the existing server-side admin authorization boundary and uses a server-only data layer for dashboard reads.
+
+The dashboard deliberately does not expose a public dashboard API at this stage. Server Components call the server-only admin data layer after `requireAdmin()` succeeds. This keeps service-role access off the browser and avoids adding an unnecessary public attack surface.
+
+### Information architecture
+
+The admin workspace is organized around:
+
+- Dashboard
+- Orders
+- Inventory
+- Products
+- Customers
+
+The navigation shell is established now, while future operational sections remain intentionally disabled until their dedicated phases are implemented.
+
+### Dashboard metrics
+
+The first dashboard view exposes:
+
+- Revenue from successfully paid orders
+- Total order count
+- Pending payment count
+- Fulfillment counts by lifecycle state
+- Low-stock product count
+- Out-of-stock product count
+- Currently reserved inventory units
+- Recent order/payment/system events
+
+Revenue is calculated from the order ledger rather than the Paystack customer charge. This keeps business revenue distinct from provider fee pass-through amounts.
+
+The current low-stock threshold is 5 units for active products. This is an operational default and can be made configurable during inventory management work.
+
+### Role model
+
+Current roles:
+
+| Role | Dashboard | Orders | Inventory | Products | Customers | Role administration |
+|---|---|---|---|---|---|---|
+| owner | read/write | read/write | read/write | read/write | read/write | yes |
+| admin | read/write | read/write | read/write | read/write | read/write | no |
+| operations | read | read/write | read/write | read | read | no |
+
+This matrix is an authorization design target for the remaining Phase 7 work. UI visibility will never be treated as the security boundary; every sensitive server operation must enforce the role independently.
+
+### Security boundary
+
+The dashboard data layer uses the server-only Supabase administrative client. It must only be reached after server-side admin authorization. Service-role credentials are never sent to the browser.
+
+Supabase's current guidance supports using `getClaims()` to verify sessions for protected pages and `getUser()` when a fresh Auth-server user record is specifically needed. The existing admin helper currently uses `getUser()`; this remains valid but will be reviewed for optimization and consistency during the Phase 8 security audit.
+
+### Phase 7.2 implementation status
+
+Implemented:
+
+- protected admin layout
+- desktop admin navigation shell
+- role/email context in shell
+- dashboard metric data layer
+- revenue/order/payment metrics
+- fulfillment overview
+- inventory health overview
+- recent-activity data foundation
+- responsive dashboard cards
+
+Still required before Phase 7.2 can be marked complete:
+
+- production-quality responsive/mobile admin navigation
+- dashboard error/empty/loading states
+- final visual/UX review
+- verification against live data
+- role-aware navigation/access behavior
+- automated/manual regression testing
+- deployment verification
+- documentation update with test evidence
 
 ## 11. Documentation policy going forward
 
