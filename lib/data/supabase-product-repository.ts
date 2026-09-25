@@ -49,7 +49,7 @@ async function getProducts(filters?: {
   category?: ProductCategory;
   featured?: boolean;
 }) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   let query = supabase
     .from("products")
@@ -90,7 +90,7 @@ export const supabaseProductRepository = {
   },
 
   async getProductBySlug(slug: string) {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     const { data, error } = await supabase
       .from("products")
