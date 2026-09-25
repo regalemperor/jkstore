@@ -335,7 +335,7 @@ Verified:
 ### Phase 7 — Admin / Store Management
 
 7.1 Admin identity & authorization — COMPLETE  
-7.2 Dashboard architecture — IN PROGRESS  
+7.2 Dashboard architecture — COMPLETE  
 7.3 Order management  
 7.4 Inventory management  
 7.5 Product management  
@@ -534,3 +534,47 @@ Establish and validate the JKSTORE admin dashboard architecture as the operation
 **Phase 7.3 — Order Management**
 
 Phase 7.3 will cover order discovery, search/filtering, order detail operations, payment/fulfillment state visibility, customer information handling, and server-side role enforcement. No order-management mutation will be treated as secure merely because the corresponding UI control is hidden.
+
+## 14. Phase 7.3 — Order Management architecture
+
+### Objective
+Provide authorized store operators with a secure operational view of orders without turning the admin interface into unrestricted database CRUD.
+
+### Scope
+- Bounded, paginated order list
+- Search by order ID, payment reference, customer email/name/phone
+- Fulfillment and payment filters
+- Order detail view
+- Customer/delivery information
+- Items and monetary totals
+- Payment transaction visibility without secrets
+- Order timeline
+- Controlled fulfillment transitions
+- Server-side role enforcement
+- Audit events for admin fulfillment actions
+
+### State transitions
+Customer payment state remains authoritative from server-side Paystack verification/reconciliation. Admin fulfillment transitions are limited to:
+- `paid → processing`
+- `processing → shipped`
+- `shipped → delivered`
+
+The admin interface will not mark payments successful, alter payment amounts, issue refunds, or bypass payment reconciliation. Cancellation/refund workflows remain separate concerns.
+
+Each transition must lock the order, validate the current state and successful payment, validate the actor's active admin role, update atomically, and append an `order_events` audit record.
+
+### Authorization and data access
+Admin reads and mutations require the server-side admin boundary. Mutation requests also use an origin check. The database transition function independently validates the actor's admin role and state transition. The server-only admin data layer never returns guest access tokens/hashes or provider secrets.
+
+### Acceptance criteria
+- Owner can open Orders.
+- Search/filter/pagination work with bounded queries.
+- Order details show items, customer/delivery data, payment state and timeline.
+- Valid fulfillment transitions succeed; invalid/unpaid transitions fail.
+- Unauthorized users cannot access admin order APIs.
+- Database rejects non-admin transition actors.
+- Successful transitions create audit events.
+- UI works on desktop and iPhone.
+
+### Remaining risks
+Rate limiting and abuse controls remain Phase 8. Refund/cancellation and inventory mutation remain outside this phase.
