@@ -20,7 +20,9 @@ returns table (
   reserved_quantity bigint
 )
 language plpgsql
-as $$
+security definer
+set search_path = public, auth
+as $
 declare
   locked_product public.products%rowtype;
   existing_adjustment public.inventory_adjustments%rowtype;
@@ -116,3 +118,12 @@ begin
   return next;
 end;
 $$;
+
+
+revoke all on function public.admin_adjust_inventory(
+  uuid, integer, text, text, text, text, uuid, text
+) from public, anon, authenticated;
+
+grant execute on function public.admin_adjust_inventory(
+  uuid, integer, text, text, text, text, uuid, text
+) to service_role;
