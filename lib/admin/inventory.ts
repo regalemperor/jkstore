@@ -127,10 +127,18 @@ export async function getInventoryHistory(productId: string, limit = 25) {
 
   if (error) throw new Error("Unable to load inventory history.");
 
+  const { data: product, error: productError } = await supabase
+    .from("products")
+    .select("name")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (productError) throw new Error("Unable to load inventory product.");
+
   return (data ?? []).map((row) => ({
     id: row.id,
     productId: row.product_id,
-    productName: "Product",
+    productName: product?.name ?? "Product",
     actorId: row.actor_id,
     actorRole: row.actor_role,
     quantityDelta: Number(row.quantity_delta),
