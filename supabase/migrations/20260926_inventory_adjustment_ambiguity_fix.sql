@@ -22,7 +22,7 @@ returns table (
 language plpgsql
 security definer
 set search_path = public, auth
-as $
+as $function$
 declare
   locked_product public.products%rowtype;
   existing_adjustment public.inventory_adjustments%rowtype;
