@@ -1,13 +1,16 @@
 "use client";
+
 import { useState } from "react";
 import Link from "next/link";
+
 const sections = [
   { label: "Dashboard", href: "/admin", enabled: true },
   { label: "Orders", href: "/admin/orders", enabled: true },
-  { label: "Inventory", href: "/admin/inventory", enabled: false },
+  { label: "Inventory", href: "/admin/inventory", enabled: true },
   { label: "Products", href: "/admin/products", enabled: false },
   { label: "Customers", href: "/admin/customers", enabled: false },
 ];
+
 export default function AdminMobileNav({ activeSection = "Dashboard" }: { activeSection?: string }) {
   const [open, setOpen] = useState(false);
   return (
