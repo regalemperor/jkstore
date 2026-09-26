@@ -597,7 +597,242 @@ Rate limiting and abuse controls remain Phase 8. Refund/cancellation and invento
 - Successful transition audit events.
 - Admin order list/detail UI responsive for desktop and iPhone.
 
-### Current verification gate
-Code is committed to `dev/foundation`. The Supabase migration `supabase/migrations/20260925_admin_order_management.sql` must be applied successfully before fulfillment mutation testing.
+### Completion record
 
-Phase 7.3 remains **IN PROGRESS** until deployment/build verification, migration verification and authenticated acceptance testing are complete.
+Deployment/build verification:
+- Latest Phase 7.3 deployment reached READY on Vercel.
+- Production build compiled successfully.
+- TypeScript checking completed successfully.
+- All Phase 7.3 admin order routes were included in the production build.
+- No Vercel runtime errors were found in the selected 24-hour verification window.
+
+Database verification:
+- `supabase/migrations/20260925_admin_order_management.sql` was successfully applied.
+- The atomic fulfillment transition function is therefore available for the acceptance path.
+
+Authenticated acceptance:
+- Admin Orders list loaded successfully.
+- Search, filters and pagination passed.
+- Order detail view passed.
+- Customer/delivery information, payment summary and timeline passed.
+- Valid fulfillment transition testing passed.
+- Status persistence after refresh passed.
+- Desktop and iPhone acceptance passed.
+
+### Result
+
+**Phase 7.3 — COMPLETE**
+
+### Remaining risks
+- Rate limiting and broader abuse controls remain Phase 8.
+- Refund/cancellation workflows remain separate from fulfillment progression.
+- Inventory mutation and stock-adjustment operations remain Phase 7.4.
+
+## 16. Phase 7.4 — Inventory Management architecture
+
+### Objective
+Build a secure inventory control system that makes stock availability, reservations and adjustments operationally manageable without allowing the admin UI to bypass the transactional protections already used by checkout and payment reconciliation.
+
+### Architecture issue → Why it matters
+JKSTORE already has product stock and temporary inventory reservations. Inventory is therefore not simply a CRUD field on the product record.
+
+If an administrator can directly overwrite stock while customers are checking out, the system can create overselling, reservation inconsistencies, negative available stock, or unexplained inventory changes.
+
+### Professional approach
+Inventory must be treated as a transactional subsystem with:
+- authoritative product stock
+- active reservation accounting
+- available-stock calculation
+- controlled adjustments
+- immutable audit history
+- server-side role enforcement
+- database-level invariants
+- atomic updates
+
+The customer checkout path remains responsible for creating/releasing reservations. The admin inventory system must not silently modify or delete customer reservations.
+
+### Inventory model
+
+For each active product:
+
+`available_stock = inventory_quantity - active_reserved_quantity`
+
+where active reservations are records with:
+- `status = 'reserved'`
+- `expires_at > now()`
+
+Operational states:
+- **In stock** — available quantity above threshold
+- **Low stock** — available quantity at or below the configured threshold
+- **Out of stock** — available quantity is zero
+- **Reserved** — units temporarily committed to active checkout sessions
+
+The UI will show both physical inventory and available inventory so operators can distinguish actual stock from stock temporarily held by checkout sessions.
+
+### Adjustment model
+
+Admin inventory changes will use explicit adjustment operations rather than unrestricted product updates.
+
+Each adjustment should record:
+- product ID
+- quantity delta
+- previous inventory quantity
+- resulting inventory quantity
+- reason/category
+- optional operator note
+- actor ID
+- actor role
+- timestamp
+- source/reference when applicable
+
+Suggested adjustment reasons:
+- stock received
+- stock count correction
+- damaged/lost stock
+- returned stock
+- manual correction
+
+Direct browser writes to `products.inventory_quantity` will not be permitted.
+
+### Transactional safety
+
+An inventory adjustment must:
+1. authenticate the admin session;
+2. verify the actor's active admin role;
+3. lock the product row;
+4. calculate the resulting quantity;
+5. reject any result below active reserved quantity;
+6. update inventory atomically;
+7. create an immutable audit event;
+8. return the resulting inventory state.
+
+This prevents an administrator from reducing physical stock below units currently reserved for customers.
+
+### Role model
+
+Initial permissions:
+- **owner** — full inventory management
+- **admin** — inventory management
+- **operations** — inventory management
+- customer/guest — no inventory mutation access
+
+UI visibility will not be treated as authorization. Every inventory mutation will enforce the role server-side and at the database operation boundary.
+
+### Inventory dashboard scope
+
+Phase 7.4 will provide:
+- inventory list
+- search by product name/category
+- active/inactive filtering
+- stock quantity
+- reserved quantity
+- available quantity
+- low-stock/out-of-stock indicators
+- configurable/default low-stock threshold
+- product detail inventory view
+- controlled stock adjustment
+- adjustment history/audit trail
+
+### Concurrency requirements
+
+Checkout and admin inventory adjustments can occur concurrently.
+
+The inventory adjustment transaction must lock the relevant product row before calculating the new quantity. Checkout already locks product rows while creating reservations. Both paths therefore participate in a consistent database locking strategy.
+
+The system must never rely on a browser-calculated "available stock" value for mutation.
+
+### Reservation handling
+
+Phase 7.4 will expose reservation visibility but will not give administrators arbitrary reservation-edit/delete controls.
+
+Reservation lifecycle remains:
+- `reserved` during active checkout
+- `fulfilled` after verified successful payment
+- `released` after expiry/failure/reversal
+
+Expired reservations may be released by trusted server operations. Manual reservation deletion is out of scope unless a separate audited operational requirement is established.
+
+### Inventory audit
+
+Every admin stock adjustment must produce an audit record.
+
+The audit should be represented through the existing `order_events` only when an adjustment is directly order-related; otherwise Phase 7.4 should introduce a dedicated inventory adjustment ledger/table. A dedicated ledger is preferred because inventory changes are not inherently order events.
+
+Recommended table concept:
+`inventory_adjustments`
+
+Core fields:
+- id
+- product_id
+- actor_id
+- actor_role
+- quantity_delta
+- quantity_before
+- quantity_after
+- reason
+- note
+- reference
+- created_at
+
+The adjustment ledger should be append-only from the application perspective. Administrative corrections should create compensating entries rather than rewriting history.
+
+### Security requirements
+
+Phase 7.4 must explicitly prevent:
+- unauthenticated inventory reads where sensitive operational data would be exposed
+- customer/guest inventory mutation
+- direct client writes to product stock
+- negative inventory
+- reducing stock below active reservations
+- bypassing role checks
+- forged actor identity
+- duplicate adjustment execution
+- race-condition overselling
+- exposing internal admin notes unnecessarily
+
+Rate limiting remains a Phase 8 concern but inventory mutation endpoints must be designed so rate limiting can be added without changing the authorization model.
+
+### Acceptance criteria
+
+Phase 7.4 will not be marked complete until:
+- inventory list loads for authorized admins;
+- stock/reserved/available values are correct;
+- low-stock and out-of-stock states are correct;
+- inventory search/filtering works;
+- valid adjustments succeed atomically;
+- invalid adjustments are rejected;
+- stock cannot be reduced below active reservations;
+- unauthorized users receive 401/403;
+- database-level authorization rejects unauthorized mutation attempts;
+- concurrent adjustment/checkout scenarios preserve invariants;
+- every successful adjustment creates an audit record;
+- adjustment history is immutable from the normal admin UI;
+- desktop and iPhone acceptance passes;
+- deployment/build/runtime verification passes.
+
+### Out of scope for 7.4
+- product creation/editing
+- pricing changes
+- product media
+- supplier management
+- purchase orders
+- automated replenishment
+- refunds/returns workflow
+- warehouse/multi-location inventory
+- barcode/scanner integration
+- advanced inventory forecasting
+
+### Phase 7.4 implementation gate
+Architecture is defined. No inventory code should be accepted until the database model, adjustment invariants, role permissions and audit strategy are reviewed against the existing checkout/reservation implementation.
+
+## 17. Current status
+
+Project is actively under development.
+
+Current phase: **Phase 7.4 — Inventory Management architecture**
+
+Phase 7.3 is **COMPLETE**.
+
+Production status: Not yet declared live/production-ready.
+
+Next build action: implement the Phase 7.4 inventory ledger and transactional adjustment foundation only after the architecture above has been validated against the existing schema and checkout locking behavior.
