@@ -836,3 +836,79 @@ Phase 7.3 is **COMPLETE**.
 Production status: Not yet declared live/production-ready.
 
 Next build action: implement the Phase 7.4 inventory ledger and transactional adjustment foundation only after the architecture above has been validated against the existing schema and checkout locking behavior.
+
+
+## 18. Phase 7.4 implementation checkpoint — Inventory foundation
+
+### Date
+2026-09-26
+
+### Schema validation
+The existing product schema was reviewed before implementation:
+- `products.inventory_quantity` is a non-negative integer.
+- Product rows are already locked by checkout during reservation creation.
+- `inventory_reservations` tracks reserved/released/fulfilled units and expiry.
+- Active reservations are defined by `status = 'reserved'` and `expires_at > now()`.
+
+The Phase 7.4 design therefore preserves the existing transactional model rather than introducing a second stock source.
+
+### Implemented
+Migration:
+`supabase/migrations/20260926_inventory_management.sql`
+
+Commit:
+`a728d107499968925cd0d17e39126341af946992`
+
+Implemented controls:
+- dedicated `inventory_adjustments` ledger;
+- immutable adjustment history enforced by database trigger;
+- unique idempotency key for adjustment replay protection;
+- explicit adjustment reasons;
+- actor ID and actor role capture;
+- product-row locking before stock calculation;
+- expired reservation release for the affected product;
+- active reservation calculation;
+- rejection of negative inventory;
+- rejection of reductions below active reservations;
+- atomic product stock update plus ledger insert;
+- service-role-only execution of the adjustment RPC;
+- no direct anonymous/authenticated inventory mutation grants.
+
+### Admin inventory interface
+Implemented:
+- protected `/admin/inventory` page;
+- desktop/mobile admin navigation;
+- bounded inventory list;
+- product search;
+- active/inactive filter;
+- physical, reserved and available quantities;
+- low-stock/out-of-stock state;
+- controlled stock adjustment form;
+- adjustment history view;
+- no-store admin inventory APIs.
+
+### Important implementation decision
+Available stock is calculated from authoritative database values:
+
+`available = inventory_quantity - active_reserved_quantity`
+
+The browser never supplies the authoritative before/after quantity. It submits only the adjustment delta and metadata; the database transaction determines the resulting inventory.
+
+### Current verification status
+- Supabase migration: **SUCCESSFUL** — user confirmed.
+- GitHub implementation: committed.
+- Vercel deployments triggered.
+- One intermediate deployment for an incomplete commit reported ERROR; later commits containing the complete implementation were queued/building. The phase must not be marked complete until the final combined deployment reaches READY and the acceptance/security tests pass.
+
+### Remaining 7.4 work
+- final combined Vercel build verification;
+- authenticated inventory acceptance;
+- invalid adjustment tests;
+- reservation-boundary test;
+- idempotency/replay test;
+- unauthorized API/DB mutation tests;
+- concurrent checkout/adjustment invariant test;
+- desktop/iPhone acceptance;
+- runtime-error review;
+- final Phase 7.4 completion record.
+
