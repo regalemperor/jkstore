@@ -117,7 +117,7 @@ begin
   reserved_quantity := active_reserved;
   return next;
 end;
-$$;
+$function$;
 
 
 revoke all on function public.admin_adjust_inventory(
