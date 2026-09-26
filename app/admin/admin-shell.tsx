@@ -5,7 +5,7 @@ import AdminMobileNav from "@/app/admin/admin-mobile-nav";
 const sections = [
   { label: "Dashboard", href: "/admin", enabled: true },
   { label: "Orders", href: "/admin/orders", enabled: true },
-  { label: "Inventory", href: "/admin/inventory", enabled: false },
+  { label: "Inventory", href: "/admin/inventory", enabled: true },
   { label: "Products", href: "/admin/products", enabled: false },
   { label: "Customers", href: "/admin/customers", enabled: false },
 ];
@@ -29,7 +29,7 @@ export default function AdminShell({ email, role, children, activeSection = "Das
       <div className="lg:pl-64">
         <header className="sticky top-0 z-10 border-b border-black/10 bg-white/90 px-5 py-4 backdrop-blur lg:px-8">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-            <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-black/40">Store operations</p><h1 className="mt-1 text-xl font-semibold">Dashboard</h1></div>
+            <div><p className="text-xs font-semibold uppercase tracking-[0.25em] text-black/40">Store operations</p><h1 className="mt-1 text-xl font-semibold">{activeSection}</h1></div>
             <div className="flex items-center gap-2"><AdminMobileNav activeSection={activeSection} /><Link href="/" className="rounded-full border border-black/10 px-4 py-2 text-sm font-semibold hover:bg-neutral-50">View store</Link></div>
           </div>
         </header>
