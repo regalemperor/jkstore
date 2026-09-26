@@ -120,7 +120,7 @@ export async function getInventoryHistory(productId: string, limit = 25) {
 
   const { data, error } = await supabase
     .from("inventory_adjustments")
-    .select("id, product_id, actor_id, actor_role, quantity_delta, quantity_before, quantity_after, reason, note, reference, created_at, products(name)")
+    .select("id, product_id, actor_id, actor_role, quantity_delta, quantity_before, quantity_after, reason, note, reference, created_at")
     .eq("product_id", productId)
     .order("created_at", { ascending: false })
     .limit(boundedLimit);
@@ -130,7 +130,7 @@ export async function getInventoryHistory(productId: string, limit = 25) {
   return (data ?? []).map((row) => ({
     id: row.id,
     productId: row.product_id,
-    productName: Array.isArray(row.products) ? row.products[0]?.name ?? "Product" : row.products?.name ?? "Product",
+    productName: "Product",
     actorId: row.actor_id,
     actorRole: row.actor_role,
     quantityDelta: Number(row.quantity_delta),
