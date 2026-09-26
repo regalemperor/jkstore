@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatNaira } from "@/lib/format/money";
 
 type InventoryRow = {
   id: string;
