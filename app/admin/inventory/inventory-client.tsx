@@ -44,7 +44,7 @@ const reasons = [
 ] as const;
 
 function reasonLabel(value: string) {
-  return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function statusLabel(product: InventoryRow) {
