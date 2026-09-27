@@ -7,7 +7,7 @@ const sections = [
   { label: "Orders", href: "/admin/orders", enabled: true },
   { label: "Inventory", href: "/admin/inventory", enabled: true },
   { label: "Products", href: "/admin/products", enabled: true },
-  { label: "Customers", href: "/admin/customers", enabled: false },
+  { label: "Customers", href: "/admin/customers", enabled: true },
 ];
 
 export default function AdminShell({ email, role, children, activeSection = "Dashboard" }: { email: string | null; role: string; children: ReactNode; activeSection?: string }) {
