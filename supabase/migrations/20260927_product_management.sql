@@ -58,8 +58,8 @@ begin
     raise exception 'Admin authorization failed';
   end if;
 
-  if actor_role_db not in ('owner', 'admin', 'operations') then
-    raise exception 'Admin role is not permitted';
+  if actor_role_db not in ('owner', 'admin') then
+    raise exception 'Product management role is not permitted';
   end if;
 
   if p_name is null or length(trim(p_name)) = 0 or length(trim(p_name)) > 200 then
