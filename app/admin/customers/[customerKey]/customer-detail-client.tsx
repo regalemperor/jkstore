@@ -29,7 +29,7 @@ type Detail = {
 };
 
 function label(value: string) {
-  return value.replaceAll("_", " ").replace(/w/g, (letter) => letter.toUpperCase());
+  return value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function badge(value: string) {
