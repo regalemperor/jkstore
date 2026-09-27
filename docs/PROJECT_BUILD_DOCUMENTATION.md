@@ -912,3 +912,21 @@ The browser never supplies the authoritative before/after quantity. It submits o
 - runtime-error review;
 - final Phase 7.4 completion record.
 
+
+
+## Phase 7.5 — Product Management
+
+Status: IN PROGRESS
+
+Scope: catalogue product creation/editing, pricing, category assignment, tags, image URL, featured/active visibility, bounded search/filtering, and immutable admin audit events. Inventory quantity is intentionally excluded from product mutations and remains controlled by the Phase 7.4 inventory ledger.
+
+Architecture:
+- Admin UI: /admin/products
+- Server data layer: lib/admin/products.ts
+- APIs: /api/admin/products and /api/admin/products/[productId]
+- Database boundary: admin_save_product(...) SECURITY DEFINER, service_role execution only
+- Authorization: owner/admin/operations role verified against admin_roles inside the database function
+- Audit: product_admin_events append-only operational history
+- Product deletion is intentionally not exposed; inactive products are used for catalogue removal without breaking order history.
+
+Acceptance remains open until migration, deployment, and create/edit/validation/audit tests pass.
