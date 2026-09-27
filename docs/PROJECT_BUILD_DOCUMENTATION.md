@@ -339,7 +339,7 @@ Verified:
 7.3 Order management  
 7.4 Inventory management  
 7.5 Product management  
-7.6 Customer/order operations  
+7.6 Customer/order operations — IN PROGRESS  
 7.7 Admin audit/security  
 7.8 Admin testing
 
@@ -930,3 +930,74 @@ Architecture:
 - Product deletion is intentionally not exposed; inactive products are used for catalogue removal without breaking order history.
 
 Acceptance remains open until migration, deployment, and create/edit/validation/audit tests pass.
+
+
+## 19. Phase 7.6 — Customer Management architecture and implementation checkpoint
+
+### Date
+2026-09-27
+
+### Architecture decision
+JKSTORE currently uses guest checkout and stores customer contact information on authoritative order records. There is no canonical customer-account table.
+
+A dedicated `customers` table was intentionally **not** introduced in this phase. Creating a second mutable customer record without customer accounts, identity rules and profile requirements would duplicate data and create identity-resolution problems.
+
+Phase 7.6 therefore implements an **order-derived customer operations view**.
+
+### Customer identity rule
+For operational grouping:
+1. normalized email is the primary identity key when present;
+2. normalized phone is the fallback when email is unavailable;
+3. orders without either usable contact identifier are not represented as a grouped customer profile.
+
+The internal customer key is an MD5-derived opaque identifier from that normalized operational identity. The raw email/phone is not placed in the customer-detail URL.
+
+This is an operational grouping mechanism, not a claim that the store has established a permanent customer account identity.
+
+### Implemented
+- protected `/admin/customers` page;
+- responsive customer directory;
+- search by name, email or phone;
+- bounded pagination;
+- order count;
+- paid-order count;
+- paid total;
+- first/last order dates;
+- customer detail page;
+- customer order history;
+- links from customer history into existing secure admin order detail;
+- protected customer list/detail APIs;
+- service-role-only customer aggregation RPCs;
+- `Cache-Control: no-store` on customer APIs;
+- opaque customer keys instead of PII in detail URLs;
+- enabled Customers navigation on desktop and iPhone.
+
+### Security model
+Customer operations require the existing server-side admin authorization boundary.
+
+The customer aggregation functions are not executable by public, anonymous or authenticated clients. They are executable only through the server-side service-role client after admin authorization.
+
+No guest order-access token, payment secret, Paystack verification metadata or service-role credential is returned by the customer APIs.
+
+### Important limitation
+This phase provides **read/operational customer management**. It does not invent customer profile editing, account creation, saved addresses, marketing preferences or customer deletion.
+
+Those capabilities require a separate customer-account/data model and explicit privacy/business requirements.
+
+### Acceptance criteria
+Phase 7.6 remains open until:
+- Supabase migration is applied successfully;
+- customer directory loads for an authorized admin;
+- search works;
+- pagination works;
+- customer detail loads;
+- order history links correctly to existing order management;
+- unauthorized API access is rejected;
+- desktop/iPhone acceptance passes;
+- deployment/build/runtime verification passes;
+- customer grouping behavior is reviewed against real order data.
+
+### Current status
+**Phase 7.6 — IMPLEMENTED, ACCEPTANCE PENDING**
+
+Production status remains **not yet declared live/production-ready**.
