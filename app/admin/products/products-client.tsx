@@ -38,7 +38,7 @@ function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 200);
 }
 
-export default function ProductsClient() {
+export default function ProductsClient({ canManage }: { canManage: boolean }) {
   const [result, setResult] = useState<Result | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -146,7 +146,7 @@ export default function ProductsClient() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight">Products</h2>
           <p className="mt-2 text-sm text-black/55">Create and maintain catalogue details, pricing and visibility.</p>
         </div>
-        <button type="button" onClick={openCreate} className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white">Add product</button>
+        {canManage ? <button type="button" onClick={openCreate} className="rounded-xl bg-black px-5 py-3 text-sm font-semibold text-white">Add product</button> : <span className="rounded-xl border border-black/10 px-4 py-3 text-sm text-black/55">Read-only access</span>}
       </div>
 
       <section className="mt-8 rounded-3xl border border-black/10 bg-white p-5 shadow-sm">
@@ -176,7 +176,7 @@ export default function ProductsClient() {
                     <td className="px-5 py-4 font-semibold">{formatNaira(product.priceKobo)}</td>
                     <td className="px-5 py-4">{product.inventoryQuantity}</td>
                     <td className="px-5 py-4"><span className="rounded-full border border-black/10 px-2.5 py-1 text-xs font-semibold">{product.isActive ? "Active" : "Inactive"}{product.isFeatured ? " · Featured" : ""}</span></td>
-                    <td className="px-5 py-4 text-right"><button type="button" onClick={() => openEdit(product)} className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold">Edit</button></td>
+                    <td className="px-5 py-4 text-right">{canManage ? <button type="button" onClick={() => openEdit(product)} className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold">Edit</button> : null}</td>
                   </tr>
                 ))}
               </tbody>
@@ -184,7 +184,7 @@ export default function ProductsClient() {
           </div>
           <div className="divide-y divide-black/5 lg:hidden">
             {result.products.map((product) => (
-              <button key={product.id} type="button" onClick={() => openEdit(product)} className="block w-full p-5 text-left">
+              <button key={product.id} type="button" onClick={() => canManage && openEdit(product)} disabled={!canManage} className="block w-full p-5 text-left disabled:cursor-default">
                 <div className="flex items-start justify-between gap-4"><div><p className="font-semibold">{product.name}</p><p className="mt-1 text-sm text-black/45">{product.slug}</p></div><p className="font-semibold">{formatNaira(product.priceKobo)}</p></div>
                 <div className="mt-4 flex flex-wrap gap-2 text-xs"><span className="rounded-full border border-black/10 px-2.5 py-1">{product.isActive ? "Active" : "Inactive"}</span><span className="rounded-full border border-black/10 px-2.5 py-1">Stock: {product.inventoryQuantity}</span>{product.isFeatured ? <span className="rounded-full border border-black/10 px-2.5 py-1">Featured</span> : null}</div>
               </button>
