@@ -22,7 +22,7 @@ function normalizePageSize(value: number | undefined) {
 }
 
 function sanitizeSearch(value: string) {
-  return value.trim().replace(/[%_,()]/g, " ").replace(/s+/g, " ").slice(0, 100);
+  return value.trim().replace(/[%_,()]/g, " ").replace(/\\s+/g, " ").slice(0, 100);
 }
 
 export async function getAdminCustomers(filters: {
