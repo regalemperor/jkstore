@@ -8,7 +8,7 @@ export default async function AdminProductsPage() {
   const admin = await requireAdmin();
   return (
     <AdminShell email={admin.email} role={admin.role} activeSection="Products">
-      <ProductsClient />
+      <ProductsClient canManage={admin.role === "owner" || admin.role === "admin"} />
     </AdminShell>
   );
 }
