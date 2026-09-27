@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { formatNaira } from "@/lib/format/money";
 
 type Category = { id: string; name: string; slug: string };
@@ -93,7 +94,7 @@ export default function ProductsClient() {
     }
   }
 
-  async function saveProduct(event: React.FormEvent) {
+  async function saveProduct(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
     setSaveError(null);
