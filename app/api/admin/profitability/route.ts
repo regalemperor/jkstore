@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    logError("admin.profitability.unhandled_error", getSafeErrorDetails("Owner profitability report failed:", error));
+    logError("admin.profitability.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json(
       { error: "Unable to load profitability report." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
