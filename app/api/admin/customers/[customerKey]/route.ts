@@ -38,7 +38,7 @@ export async function GET(
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    logError("admin.customers.[customerKey].unhandled_error", getSafeErrorDetails("Admin customer detail failed:", error));
+    logError("admin.customers.[customerKey].unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json(
       { error: "Unable to load customer." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
