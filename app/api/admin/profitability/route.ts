@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { getCurrentAdmin } from "@/lib/auth/admin";
 import {
   getOwnerProfitability,
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    console.error("Owner profitability report failed:", error);
+    logError("admin.profitability.unhandled_error", getSafeErrorDetails("Owner profitability report failed:", error));
     return NextResponse.json(
       { error: "Unable to load profitability report." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
