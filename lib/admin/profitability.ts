@@ -6,6 +6,7 @@ export type ProfitabilityPeriod = "24h" | "7d" | "30d" | "1y";
 
 export type OwnerProfitabilityReport = {
   revenueKobo: number;
+  costedRevenueKobo: number;
   cogsKobo: number;
   paymentFeesKobo: number;
   grossProfitKobo: number;
@@ -49,6 +50,7 @@ export async function getOwnerProfitability(
 
   return {
     revenueKobo: Number(data?.revenueKobo ?? 0),
+    costedRevenueKobo: Number(data?.costedRevenueKobo ?? 0),
     cogsKobo: Number(data?.cogsKobo ?? 0),
     paymentFeesKobo: Number(data?.paymentFeesKobo ?? 0),
     grossProfitKobo: Number(data?.grossProfitKobo ?? 0),
