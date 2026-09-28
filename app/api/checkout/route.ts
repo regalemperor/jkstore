@@ -153,6 +153,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Request body too large." }, { status: 413 });
     }
 
+    logError("checkout.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });
   }
 }
