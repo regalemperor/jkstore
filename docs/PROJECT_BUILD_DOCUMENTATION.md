@@ -1077,6 +1077,38 @@ Every future profitability metric must have an explicit definition and data sour
 - desktop/iPhone acceptance;
 - runtime/build verification.
 
+### 7.7B implementation checkpoint — Owner cost management and profitability metrics
+
+Implemented on `dev/foundation`:
+- owner-only product cost entry/update in the existing Product Management workflow;
+- dedicated owner-only product-cost API backed by the `owner_set_product_cost(...)` database RPC;
+- product cost audit events through the existing product administration audit mechanism;
+- product cost snapshots remain immutable on historical order items once an order is created;
+- non-owner product APIs do not return product acquisition cost;
+- profitability dashboard now surfaces markup as gross profit divided by COGS;
+- profitability dashboard surfaces uncosted unit coverage so incomplete historical costing is visible instead of silently treated as zero cost.
+
+Security decision:
+- hiding the cost field in the UI is not the authorization boundary;
+- the cost mutation endpoint requires the authenticated role to be exactly `owner`;
+- the database RPC independently verifies the actor's owner role;
+- product-list/detail APIs only include cost data for owner requests.
+
+Accounting decision:
+- markup is defined as `gross profit / COGS × 100`;
+- where COGS is zero or unavailable, markup is not manufactured;
+- uncosted historical units remain excluded from cost/profit calculations until a trustworthy cost snapshot exists.
+
+Verification remains open for:
+- Vercel build/deployment reaching READY on the combined changes;
+- owner cost create/update acceptance;
+- non-owner cost API denial;
+- database-level non-owner RPC denial;
+- historical cost snapshot verification;
+- markup/margin calculation verification;
+- desktop/iPhone acceptance;
+- runtime-error review.
+
 ### Current status
 **Phase 7.7 — IN PROGRESS**
 
