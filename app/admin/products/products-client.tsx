@@ -6,7 +6,7 @@ import { formatNaira } from "@/lib/format/money";
 
 type Category = { id: string; name: string; slug: string };
 type Product = {
-  id: string; name: string; slug: string; description: string; priceKobo: number; costKobo?: number | null;
+  id: string; name: string; slug: string; description: string; priceKobo: number; costKobo: number | null;
   categoryId: string; tag: string | null; imageUrl: string | null; isFeatured: boolean;
   isActive: boolean; inventoryQuantity: number; createdAt: string; updatedAt: string;
 };
