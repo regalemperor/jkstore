@@ -22,7 +22,7 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    logError("admin.inventory.unhandled_error", getSafeErrorDetails("Admin inventory list failed:", error));
+    logError("admin.inventory.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json(
       { error: "Unable to load inventory." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
