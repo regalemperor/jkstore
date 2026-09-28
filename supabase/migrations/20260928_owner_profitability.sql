@@ -295,10 +295,12 @@ as $function$
 declare
   actor_role_db text;
   revenue bigint := 0;
+  costed_revenue bigint := 0;
   cogs bigint := 0;
   fees bigint := 0;
   order_count integer := 0;
   units_sold bigint := 0;
+  missing_cost_units bigint := 0;
   result jsonb;
 begin
   select ar.role into actor_role_db
@@ -324,9 +326,11 @@ begin
     and o.created_at < p_end_at;
 
   select
+    coalesce(sum(oi.unit_price_kobo * oi.quantity) filter (where oi.unit_cost_kobo is not null), 0),
     coalesce(sum(oi.unit_cost_kobo * oi.quantity), 0),
-    coalesce(sum(oi.quantity), 0)
-  into cogs, units_sold
+    coalesce(sum(oi.quantity) filter (where oi.unit_cost_kobo is not null), 0),
+    coalesce(sum(oi.quantity) filter (where oi.unit_cost_kobo is null), 0)
+  into costed_revenue, cogs, units_sold, missing_cost_units
   from public.order_items oi
   join public.orders o on o.id = oi.order_id
   where o.payment_status = 'success'
@@ -368,10 +372,12 @@ begin
     'revenueKobo', revenue,
     'cogsKobo', cogs,
     'paymentFeesKobo', fees,
-    'grossProfitKobo', revenue - cogs,
-    'profitAfterPaymentFeesKobo', revenue - cogs - fees,
+    'costedRevenueKobo', costed_revenue,
+    'grossProfitKobo', costed_revenue - cogs,
+    'profitAfterPaymentFeesKobo', costed_revenue - cogs - fees,
     'orderCount', order_count,
     'unitsSold', units_sold,
+    'missingCostUnits', missing_cost_units,
     'products', coalesce(result, '[]'::jsonb)
   );
 end;
