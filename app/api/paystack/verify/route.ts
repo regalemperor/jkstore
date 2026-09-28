@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyPaystackTransaction } from "@/lib/paystack/verify";
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
     });
 
     if (error || !data?.[0]) {
-      console.error("Paystack reconciliation failed:", error?.message);
+      logError("paystack.verify.reconciliation_failed", { errorCode: error?.code ?? null });
       return NextResponse.json({ error: "Unable to reconcile payment." }, { status: 500 });
     }
 
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
         .eq("id", payment.order_id);
 
       if (accessError) {
-        console.error("Guest order access refresh failed:", accessError.message);
+        logError("paystack.verify.order_access_refresh_failed", { errorCode: accessError.code ?? null });
         return NextResponse.json(
           { error: "Payment verified, but order access could not be secured." },
           { status: 500 },
@@ -93,7 +94,7 @@ export async function GET(request: Request) {
 
     return response;
   } catch (error) {
-    console.error("Paystack verification error:", error);
+    logError("paystack.verify.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json({ error: "Unable to verify payment." }, { status: 502 });
   }
 }
