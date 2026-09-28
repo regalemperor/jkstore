@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentAdmin } from "@/lib/auth/admin";
-import { getOwnerProfitability, type ProfitabilityPeriod } from "@/lib/admin/profitability";
+import {
+  getOwnerProfitability,
+  getOwnerProfitabilityTimeline,
+  type ProfitabilityPeriod,
+} from "@/lib/admin/profitability";
 
 const PERIODS: ProfitabilityPeriod[] = ["24h", "7d", "30d", "1y"];
 
@@ -24,8 +28,15 @@ export async function GET(request: Request) {
   }
 
   try {
-    const report = await getOwnerProfitability(admin.id, period);
-    return NextResponse.json(report, { headers: { "Cache-Control": "no-store" } });
+    const [report, timeline] = await Promise.all([
+      getOwnerProfitability(admin.id, period),
+      getOwnerProfitabilityTimeline(admin.id, period),
+    ]);
+
+    return NextResponse.json(
+      { ...report, timeline },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     console.error("Owner profitability report failed:", error);
     return NextResponse.json(
