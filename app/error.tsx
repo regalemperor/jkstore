@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 export default function Error({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
@@ -12,7 +13,7 @@ export default function Error({
     console.error("JKStore application error boundary triggered.", {
       digest: error.digest,
     });
-  }, []);
+  }, [error.digest]);
 
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
