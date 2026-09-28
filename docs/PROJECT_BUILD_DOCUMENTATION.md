@@ -1265,3 +1265,50 @@ The webhook change is now the current branch head through the subsequent documen
 
 ### Status
 **Phase 8.2 — IMPLEMENTED / VERIFICATION OPEN**
+
+
+## Phase 8.3 — Abuse & Rate-Limit Hardening
+
+### Objective
+Add durable application-level throttling to the highest-risk public payment/order endpoints so repeated requests cannot freely consume checkout, database, or payment-provider resources.
+
+### Research validation
+Vercel documents rate limiting as a traffic-abuse control and notes that stateless/serverless enforcement needs durable counter state when application-level accuracy is required. Vercel Firewall rate limiting is also available as an additional edge layer; application-level limits are retained here so the critical business endpoints have explicit, route-specific safeguards independent of plan-specific WAF configuration.
+
+### Implemented controls
+- Supabase-backed fixed-window counters survive Vercel serverless instance changes.
+- Client identifiers are SHA-256 hashed before persistence; raw IP addresses are not stored by the rate-limit table.
+- Checkout: 12 requests per minute per client IP.
+- Paystack initialization: 20 requests per minute per client IP.
+- Paystack initialization: 5 requests per minute per client IP + order ID.
+- Paystack webhook: 120 requests per minute per client IP.
+- Excess requests return HTTP 429 with Retry-After.
+- Existing checkout idempotency, inventory reservation, server-side pricing, Paystack verification, webhook signature validation, and reconciliation remain authoritative.
+- Rate-limit infrastructure failure intentionally fails open so a rate-limit database problem cannot take checkout/payment processing offline; security-critical business controls do not depend solely on the limiter.
+- Supabase Auth remains responsible for authentication abuse controls on the admin sign-in flow; the admin surface continues to require authenticated admin roles.
+
+### Database component
+Migration:
+- supabase/migrations/20260928_api_rate_limits.sql
+- public.api_rate_limit_buckets
+- public.consume_api_rate_limit(...)
+- Public/anonymous/authenticated execution is revoked; only service_role may execute the counter RPC.
+
+### Application components
+- lib/http/rate-limit.ts
+- app/api/checkout/route.ts
+- app/api/paystack/initialize/route.ts
+- app/api/paystack/webhook/route.ts
+
+### Status
+**Phase 8.3 — IMPLEMENTED / VERIFICATION OPEN**
+
+Acceptance remains gated on:
+1. Applying the Supabase migration successfully.
+2. Successful deployment of the implementation.
+3. Normal checkout/payment/webhook behavior still passing.
+4. Confirming 429 responses after the configured threshold.
+5. Confirming Retry-After is present.
+6. Confirming rate-limit counters do not expose raw client IPs.
+7. Confirming signed-out/admin authorization protections remain unchanged.
+8. Confirming no horizontal overflow or customer-facing UI regression.
