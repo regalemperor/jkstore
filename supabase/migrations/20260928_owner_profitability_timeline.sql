@@ -52,7 +52,7 @@ begin
   end if;
 
   with buckets as (
-    select generate_series(bucket_start, bucket_end - interval '1 microsecond', bucket_interval) as bucket_at
+    select generate_series(bucket_start, bucket_end, bucket_interval) as bucket_at
   ),
   successful_orders as (
     select
