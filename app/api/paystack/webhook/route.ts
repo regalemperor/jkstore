@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyPaystackTransaction } from "@/lib/paystack/verify";
-import { RequestBodyTooLargeError, readJsonBody } from "@/lib/http/body";
+import { RequestBodyTooLargeError, readTextBody } from "@/lib/http/body";
 
 function validSignature(rawBody: string, signature: string, secret: string) {
   const expected = createHmac("sha512", secret).update(rawBody).digest("hex");
@@ -25,18 +25,7 @@ export async function POST(request: Request) {
   let rawBody: string;
 
   try {
-    if (request.headers.get("content-length")) {
-      const declaredLength = Number(request.headers.get("content-length"));
-      if (Number.isSafeInteger(declaredLength) && declaredLength > 128 * 1024) {
-        throw new RequestBodyTooLargeError();
-      }
-    }
-
-    const bytes = await request.arrayBuffer();
-    if (bytes.byteLength > 128 * 1024) {
-      throw new RequestBodyTooLargeError();
-    }
-    rawBody = new TextDecoder().decode(bytes);
+    rawBody = await readTextBody(request, 128 * 1024);
   } catch (error) {
     if (error instanceof RequestBodyTooLargeError) {
       return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
