@@ -6,6 +6,7 @@ import { formatNaira } from "@/lib/format/money";
 type Period = "24h" | "7d" | "30d" | "1y";
 type Report = {
   revenueKobo: number;
+  costedRevenueKobo: number;
   cogsKobo: number;
   paymentFeesKobo: number;
   grossProfitKobo: number;
@@ -83,9 +84,10 @@ export default function ProfitabilityClient() {
       {loading ? <div className="mt-8 rounded-3xl border border-black/10 bg-white p-8 text-sm text-black/50">Loading private profitability data…</div> :
       error ? <div className="mt-8 rounded-3xl border border-black/10 bg-white p-8"><p className="font-semibold">Profitability could not be loaded.</p><p className="mt-2 text-sm text-black/55">{error}</p></div> :
       report ? <>
-        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           {[
             ["Revenue", formatNaira(report.revenueKobo)],
+            ["Costed sales", formatNaira(report.costedRevenueKobo)],
             ["COGS", formatNaira(report.cogsKobo)],
             ["Gross profit", formatNaira(report.grossProfitKobo)],
             ["After payment fees", formatNaira(report.profitAfterPaymentFeesKobo)],
