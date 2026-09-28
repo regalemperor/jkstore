@@ -33,7 +33,7 @@ function parseProductInput(body: unknown) {
 }
 
 export async function GET(request: Request) {
-  const { response } = await requireAdminApi();
+  const { admin, response } = await requireAdminApi();
   if (response) return response;
 
   const url = new URL(request.url);
@@ -43,6 +43,7 @@ export async function GET(request: Request) {
       pageSize: Number(url.searchParams.get("pageSize") ?? 25),
       search: url.searchParams.get("search") ?? "",
       active: url.searchParams.get("active") ?? "",
+      includeCost: admin.role === "owner",
     });
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch {
