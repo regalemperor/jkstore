@@ -1349,3 +1349,49 @@ Make production failures diagnosable by the owner/developer without exposing dat
 8. Mobile UI remains usable with no horizontal overflow.
 
 **Status: IMPLEMENTED / VERIFICATION OPEN**
+
+
+## Phase 8 — Database Security & Access-Control Audit
+
+### Objective
+Audit the Supabase database boundary so row-level policies, PostgreSQL grants, SECURITY DEFINER functions, and server-side service-role access work together without exposing private business or payment data to browser roles.
+
+### Research validation
+- Supabase documents RLS and PostgreSQL grants as complementary controls: grants determine whether a role can reach an object, while RLS determines which rows are accessible.
+- Supabase recommends explicit grants, revoking broad default privileges, and careful review of SECURITY DEFINER functions.
+- The storefront requires direct public product reads, so catalog access remains intentionally exposed only through selected product columns.
+
+### Audit findings
+- Core commerce tables already have RLS enabled.
+- Customer order isolation is enforced with auth.uid() policies for authenticated users.
+- Guest order access is handled through the protected application API and opaque token hashing rather than direct anonymous table access.
+- Administrative mutations, payment reconciliation, inventory adjustments, customer reporting, product management, and profitability functions are server-role operations.
+- Finding fixed: the public product SELECT policy previously allowed client roles to request all product columns, which would include the private cost_kobo column added for profitability accounting.
+- Finding fixed: several sensitive commerce/audit tables and functions relied on broad default Data API privileges even though the application uses protected server APIs for those operations.
+
+### Implemented hardening
+Migration: supabase/migrations/20260929_database_access_hardening.sql
+
+- Public/authenticated product reads are now column-limited and exclude cost_kobo.
+- Authenticated direct order reads are column-limited and exclude idempotency and guest-token secrets.
+- Direct browser access to payment transactions, order events, inventory reservations, product audit events, inventory adjustments, and rate-limit buckets is revoked.
+- Administrative, payment-reconciliation, inventory, customer, product, and profitability RPC execution is explicitly restricted to service_role.
+- create_pending_order remains explicitly executable by anon/authenticated because public checkout requires it; its existing validation, pricing, inventory, idempotency, and guest-token protections remain authoritative.
+- Future public-schema table, function, and sequence privileges for anon/authenticated are changed to opt-in rather than broad automatic exposure.
+
+### Security design note
+The current SECURITY DEFINER functions use a pinned schema search path (public/auth) rather than an unpinned default. Supabase's strongest recommendation is search_path = '' with fully schema-qualified references. A later hardening pass can migrate individual functions to the empty search path safely; this audit does not perform a broad rewrite because changing these functions without schema-qualifying every reference could break payment, checkout, inventory, or admin operations.
+
+### Verification gate
+1. Supabase migration succeeds.
+2. Public catalog still loads normally.
+3. Direct public product query cannot retrieve cost_kobo.
+4. Authenticated user can read only their permitted order columns/rows.
+5. Direct client access to payment/audit/reservation tables is denied.
+6. Direct client execution of admin/owner/payment/inventory RPCs is denied.
+7. Checkout RPC remains callable and normal checkout still passes.
+8. Admin product/inventory/order/customer/profitability operations still pass.
+9. Owner-only cost/profitability data remains inaccessible to Operations.
+10. No storefront or mobile UI regression occurs.
+
+**Status: IMPLEMENTED / VERIFICATION OPEN**
