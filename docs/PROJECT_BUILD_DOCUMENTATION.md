@@ -1202,3 +1202,38 @@ Required acceptance before this sub-phase is complete:
 **Phase 7.7C — COMPLETE / ACCEPTED**
 
 Production status remains **not yet declared live/production-ready**.
+
+
+## Phase 8 — Production Hardening
+
+### 8.1 Security baseline checkpoint — 2026-09-28
+
+### Objective
+Begin production hardening with the highest-leverage application-level controls: patched framework version and baseline HTTP security headers.
+
+### Research validation
+Next.js currently lists 16.x as Active LTS. On September 22, 2026, Next.js published a critical security update and advised upgrading to **16.3.6**. JKSTORE was previously on 16.3.3, so the framework patch is being applied before deeper production-hardening work. citeturn0search1turn0search10
+
+### Implemented
+- Next.js upgraded from **16.3.3 → 16.3.6**.
+- Added baseline response headers through `next.config.ts`:
+  - `X-Content-Type-Options: nosniff`
+  - `Referrer-Policy: strict-origin-when-cross-origin`
+  - `X-Frame-Options: DENY`
+  - `Permissions-Policy` restricting camera, microphone and geolocation while permitting payment for the site origin.
+  - `Strict-Transport-Security` with one-year max age and subdomain coverage.
+- Deliberately did **not** add a Content Security Policy yet. CSP requires an inventory of every legitimate script, image, font, payment and third-party origin so that the policy does not break checkout or storefront functionality. It will be handled as a separate verified hardening step.
+
+### Security principle
+These headers are defense-in-depth controls. They do not replace authentication, authorization, database/RLS controls, input validation, rate limiting or payment verification.
+
+### Verification status
+- GitHub commits created successfully.
+- Vercel deployment triggered for the framework upgrade and header changes.
+- Final READY/build verification remains open.
+- Header behavior must be verified against the deployed preview.
+- Full Phase 8 security acceptance remains open.
+
+### Status
+**Phase 8.1 — IMPLEMENTED / VERIFICATION OPEN**
+
