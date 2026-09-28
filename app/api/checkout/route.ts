@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
+import { consumeApiRateLimit } from "@/lib/http/rate-limit";
 
 type CheckoutItem = { productId?: string; quantity?: number };
 type ValidCheckoutItem = { productId: string; quantity: number };
@@ -40,6 +41,21 @@ function isBoundedString(value: unknown, maxLength: number) {
 }
 
 export async function POST(request: Request) {
+  const rateLimit = await consumeApiRateLimit(request, "checkout", 60, 12);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts. Please try again shortly." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+          "X-RateLimit-Remaining": "0",
+        },
+      },
+    );
+  }
+
   try {
     const body = await readJsonBody<CheckoutRequest>(request, 32 * 1024);
     const items = Array.isArray(body.items) ? body.items : [];
