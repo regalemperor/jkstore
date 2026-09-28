@@ -6,17 +6,17 @@ import { formatNaira } from "@/lib/format/money";
 
 type Category = { id: string; name: string; slug: string };
 type Product = {
-  id: string; name: string; slug: string; description: string; priceKobo: number;
+  id: string; name: string; slug: string; description: string; priceKobo: number; costKobo: number | null;
   categoryId: string; tag: string | null; imageUrl: string | null; isFeatured: boolean;
   isActive: boolean; inventoryQuantity: number; createdAt: string; updatedAt: string;
 };
 type Result = { products: Product[]; categories: Category[]; page: number; pageSize: number; total: number; totalPages: number };
 type FormState = {
-  name: string; slug: string; description: string; priceNaira: string; categoryId: string;
+  name: string; slug: string; description: string; priceNaira: string; costNaira: string; categoryId: string;
   tag: string; imageUrl: string; isFeatured: boolean; isActive: boolean;
 };
 const emptyForm: FormState = {
-  name: "", slug: "", description: "", priceNaira: "", categoryId: "", tag: "",
+  name: "", slug: "", description: "", priceNaira: "", costNaira: "", categoryId: "", tag: "",
   imageUrl: "", isFeatured: false, isActive: true,
 };
 
@@ -26,6 +26,7 @@ function toForm(product: Product): FormState {
     slug: product.slug,
     description: product.description,
     priceNaira: (product.priceKobo / 100).toString(),
+    costNaira: product.costKobo === null ? "" : (product.costKobo / 100).toString(),
     categoryId: product.categoryId,
     tag: product.tag ?? "",
     imageUrl: product.imageUrl ?? "",
@@ -107,6 +108,15 @@ export default function ProductsClient({ canManage }: { canManage: boolean }) {
       return;
     }
 
+    const costNaira = Number(form.costNaira);
+    const hasCost = form.costNaira.trim() !== "";
+    const costKobo = Math.round(costNaira * 100);
+    if (hasCost && (!Number.isFinite(costNaira) || costNaira < 0 || !Number.isSafeInteger(costKobo))) {
+      setSaveError("Enter a valid cost in naira, or leave it blank if the cost is not yet known.");
+      setSaving(false);
+      return;
+    }
+
     const payload = {
       name: form.name,
       slug: form.slug || slugify(form.name),
@@ -129,6 +139,17 @@ export default function ProductsClient({ canManage }: { canManage: boolean }) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to save product.");
+
+      if (hasCost && (data.product?.id || editing?.id)) {
+        const productId = data.product?.id || editing?.id;
+        const costResponse = await fetch(`/api/admin/products/${productId}/cost`, {
+          method: "PATCH", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ costKobo }),
+        });
+        const costData = await costResponse.json();
+        if (!costResponse.ok) throw new Error(costData.error || "Product saved, but cost could not be updated.");
+      }
+
       closeEditor();
       await load();
     } catch (requestError) {
@@ -167,13 +188,13 @@ export default function ProductsClient({ canManage }: { canManage: boolean }) {
           <div className="hidden overflow-x-auto lg:block">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-black/10 bg-neutral-50 text-xs uppercase tracking-wide text-black/45">
-                <tr><th className="px-5 py-4">Product</th><th className="px-5 py-4">Price</th><th className="px-5 py-4">Stock</th><th className="px-5 py-4">Visibility</th><th className="px-5 py-4"></th></tr>
+                <tr><th className="px-5 py-4">Product</th><th className="px-5 py-4">Price</th><th className="px-5 py-4">Cost</th><th className="px-5 py-4">Stock</th><th className="px-5 py-4">Visibility</th><th className="px-5 py-4"></th></tr>
               </thead>
               <tbody className="divide-y divide-black/5">
                 {result.products.map((product) => (
                   <tr key={product.id}>
                     <td className="px-5 py-4"><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-black/45">{product.slug}</p></td>
-                    <td className="px-5 py-4 font-semibold">{formatNaira(product.priceKobo)}</td>
+                    <td className="px-5 py-4 font-semibold">{formatNaira(product.priceKobo)}</td><td className="px-5 py-4">{product.costKobo === null ? <span className="text-black/40">Not set</span> : formatNaira(product.costKobo)}</td>
                     <td className="px-5 py-4">{product.inventoryQuantity}</td>
                     <td className="px-5 py-4"><span className="rounded-full border border-black/10 px-2.5 py-1 text-xs font-semibold">{product.isActive ? "Active" : "Inactive"}{product.isFeatured ? " · Featured" : ""}</span></td>
                     <td className="px-5 py-4 text-right">{canManage ? <button type="button" onClick={() => openEdit(product)} className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold">Edit</button> : null}</td>
@@ -209,6 +230,7 @@ export default function ProductsClient({ canManage }: { canManage: boolean }) {
               <label className="block"><span className="text-sm font-semibold">Description</span><textarea required value={form.description} onChange={(e) => setForm({...form, description:e.target.value})} rows={4} className="mt-2 w-full rounded-xl border border-black/10 p-3" /></label>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="block"><span className="text-sm font-semibold">Price (₦)</span><input required inputMode="decimal" value={form.priceNaira} onChange={(e) => setForm({...form, priceNaira:e.target.value})} className="mt-2 h-11 w-full rounded-xl border border-black/10 px-3" /></label>
+                <label className="block"><span className="text-sm font-semibold">Cost (₦) — owner only</span><input inputMode="decimal" value={form.costNaira} onChange={(e) => setForm({...form, costNaira:e.target.value})} className="mt-2 h-11 w-full rounded-xl border border-black/10 px-3" placeholder="e.g. 8500" /><p className="mt-1 text-xs text-black/45">Saved cost is snapshotted into future orders for accurate profit reporting.</p></label>
                 <label className="block"><span className="text-sm font-semibold">Category</span><select required value={form.categoryId} onChange={(e) => setForm({...form, categoryId:e.target.value})} className="mt-2 h-11 w-full rounded-xl border border-black/10 px-3"><option value="">Select category</option>{(result?.categories ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
