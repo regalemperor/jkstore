@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 
 import { requireAdminApi } from "@/lib/auth/admin";
 import { getAdminInventory } from "@/lib/admin/inventory";
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    console.error("Admin inventory list failed:", error);
+    logError("admin.inventory.unhandled_error", getSafeErrorDetails("Admin inventory list failed:", error));
     return NextResponse.json(
       { error: "Unable to load inventory." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
