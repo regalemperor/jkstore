@@ -32,13 +32,11 @@ export async function getAdminProducts(input: {
   const pageSize = normalizePageSize(input.pageSize);
   const search = sanitizeSearch(input.search ?? "");
   const includeCost = input.includeCost === true;
-  const productSelect = includeCost
-    ? "id, name, slug, description, price_kobo, cost_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at"
-    : "id, name, slug, description, price_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at";
 
   let query = supabase
     .from("products")
-    .select(productSelect,
+    .select(
+      "id, name, slug, description, price_kobo, cost_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -65,7 +63,7 @@ export async function getAdminProducts(input: {
       slug: product.slug,
       description: product.description,
       priceKobo: Number(product.price_kobo),
-      costKobo: includeCost && product.cost_kobo !== null ? Number(product.cost_kobo) : null,
+      ...(includeCost ? { costKobo: product.cost_kobo === null ? null : Number(product.cost_kobo) } : {}),
       categoryId: product.category_id,
       tag: product.tag,
       imageUrl: product.image_url,
@@ -90,9 +88,7 @@ export async function getAdminProduct(productId: string, includeCost = false) {
     supabase
       .from("products")
       .select(
-        includeCost
-          ? "id, name, slug, description, price_kobo, cost_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at"
-          : "id, name, slug, description, price_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at",
+        "id, name, slug, description, price_kobo, cost_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at",
       )
       .eq("id", productId)
       .maybeSingle(),
@@ -115,7 +111,7 @@ export async function getAdminProduct(productId: string, includeCost = false) {
       slug: product.slug,
       description: product.description,
       priceKobo: Number(product.price_kobo),
-      costKobo: includeCost && product.cost_kobo !== null ? Number(product.cost_kobo) : null,
+      ...(includeCost ? { costKobo: product.cost_kobo === null ? null : Number(product.cost_kobo) } : {}),
       categoryId: product.category_id,
       tag: product.tag,
       imageUrl: product.image_url,
