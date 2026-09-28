@@ -2,6 +2,29 @@ import "server-only";
 
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+type AdminCustomerRow = {
+  customer_key: string;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  order_count: number | string | null;
+  paid_order_count: number | string | null;
+  total_paid_kobo: number | string | null;
+  first_order_at: string | null;
+  last_order_at: string | null;
+};
+
+type AdminCustomerOrderRow = {
+  id: string;
+  status: string | null;
+  payment_status: string | null;
+  total_kobo: number | string | null;
+  customer_name: string | null;
+  customer_email: string | null;
+  customer_phone: string | null;
+  created_at: string | null;
+};
+
 export const ADMIN_CUSTOMER_PAGE_SIZE = 25;
 export const ADMIN_CUSTOMER_MAX_PAGE_SIZE = 100;
 
@@ -53,7 +76,7 @@ export async function getAdminCustomers(filters: {
   const total = Number(countData ?? 0);
 
   return {
-    customers: (data ?? []).map((customer) => ({
+    customers: (data ?? []).map((customer: AdminCustomerRow) => ({
       customerKey: customer.customer_key,
       customerName: customer.customer_name,
       customerEmail: customer.customer_email,
@@ -102,7 +125,7 @@ export async function getAdminCustomer(customerKey: string) {
       firstOrderAt: customer.first_order_at,
       lastOrderAt: customer.last_order_at,
     },
-    orders: (ordersData ?? []).map((order) => ({
+    orders: (ordersData ?? []).map((order: AdminCustomerOrderRow) => ({
       id: order.id,
       status: order.status,
       paymentStatus: order.payment_status,
