@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
+import { consumeApiRateLimit } from "@/lib/http/rate-limit";
 import { calculateExpectedCustomerChargeKobo, getPaystackFeeMode } from "@/lib/paystack/fees";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,21 @@ type RequestBody = {
 };
 
 export async function POST(request: Request) {
+  const ipRateLimit = await consumeApiRateLimit(request, "paystack-initialize", 60, 20);
+
+  if (!ipRateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many payment attempts. Please try again shortly." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(ipRateLimit.retryAfterSeconds),
+          "X-RateLimit-Remaining": "0",
+        },
+      },
+    );
+  }
+
   try {
     const body = await readJsonBody<RequestBody>(request, 8 * 1024);
 
@@ -20,6 +36,27 @@ export async function POST(request: Request) {
       body.orderId.length > 100
     ) {
       return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
+    }
+
+    const orderRateLimit = await consumeApiRateLimit(
+      request,
+      "paystack-initialize-order",
+      60,
+      5,
+      body.orderId.trim(),
+    );
+
+    if (!orderRateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many payment attempts for this order. Please try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(orderRateLimit.retryAfterSeconds),
+            "X-RateLimit-Remaining": "0",
+          },
+        },
+      );
     }
 
     const supabase = createSupabaseAdminClient();
