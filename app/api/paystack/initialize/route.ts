@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
 import { calculateExpectedCustomerChargeKobo, getPaystackFeeMode } from "@/lib/paystack/fees";
 
 export const dynamic = "force-dynamic";
@@ -11,9 +12,13 @@ type RequestBody = {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as RequestBody;
+    const body = await readJsonBody<RequestBody>(request, 8 * 1024);
 
-    if (!body.orderId) {
+    if (
+      typeof body.orderId !== "string" ||
+      !body.orderId.trim() ||
+      body.orderId.length > 100
+    ) {
       return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
     }
 
@@ -22,7 +27,7 @@ export async function POST(request: Request) {
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("id, status, payment_status, total_kobo, customer_email, payment_reference")
-      .eq("id", body.orderId)
+      .eq("id", body.orderId.trim())
       .single();
 
     if (orderError || !order) {
@@ -167,7 +172,11 @@ export async function POST(request: Request) {
       reference: order.payment_reference,
     });
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "Request body too large." }, { status: 413 });
+    }
+
     console.error("Paystack initialization error:", error);
-    return NextResponse.json({ error: "Unable to initialize payment." }, { status: 500 });
+    return NextResponse.json({ error: "Unable to initialize payment." }, { status: 400 });
   }
 }
