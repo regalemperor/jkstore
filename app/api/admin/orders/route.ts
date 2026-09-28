@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 
 import { requireAdminApi } from "@/lib/auth/admin";
 import { getAdminOrders } from "@/lib/admin/orders";
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    console.error("Admin orders list failed:", error);
+    logError("admin.orders.unhandled_error", getSafeErrorDetails("Admin orders list failed:", error));
     return NextResponse.json(
       { error: "Unable to load orders." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
