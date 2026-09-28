@@ -34,7 +34,7 @@ export async function getAdminProducts(input: {
   let query = supabase
     .from("products")
     .select(
-      "id, name, slug, description, price_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at",
+      "id, name, slug, description, price_kobo, cost_kobo, category_id, tag, image_url, is_featured, is_active, inventory_quantity, created_at, updated_at",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -61,6 +61,7 @@ export async function getAdminProducts(input: {
       slug: product.slug,
       description: product.description,
       priceKobo: Number(product.price_kobo),
+      costKobo: product.cost_kobo === null ? null : Number(product.cost_kobo),
       categoryId: product.category_id,
       tag: product.tag,
       imageUrl: product.image_url,
