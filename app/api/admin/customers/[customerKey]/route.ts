@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 
 import { requireAdminApi } from "@/lib/auth/admin";
 import { getAdminCustomer } from "@/lib/admin/customers";
@@ -37,7 +38,7 @@ export async function GET(
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    console.error("Admin customer detail failed:", error);
+    logError("admin.customers.[customerKey].unhandled_error", getSafeErrorDetails("Admin customer detail failed:", error));
     return NextResponse.json(
       { error: "Unable to load customer." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
