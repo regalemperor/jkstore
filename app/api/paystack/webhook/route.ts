@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual, createHash } from "node:crypto";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readTextBody, RequestBodyTooLargeError } from "@/lib/http/body";
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Request body too large." }, { status: 413 });
     }
 
-    console.error("Paystack webhook body read failed:", error);
+    logError("paystack.webhook.body_read_failed", getSafeErrorDetails(error));
     return NextResponse.json({ error: "Unable to process webhook." }, { status: 400 });
   }
 
@@ -99,13 +100,13 @@ export async function POST(request: Request) {
     });
 
     if (error || !data?.[0]) {
-      console.error("Paystack webhook reconciliation failed:", error?.message);
+      logError("paystack.webhook.reconciliation_failed", { errorCode: error?.code ?? null });
       return NextResponse.json({ error: "Unable to reconcile webhook." }, { status: 500 });
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Paystack webhook error:", error);
+    logError("paystack.webhook.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json({ error: "Unable to process webhook." }, { status: 500 });
   }
 }
