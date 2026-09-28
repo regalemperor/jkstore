@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -39,7 +40,7 @@ export async function GET(
       .maybeSingle();
 
     if (orderError) {
-      console.error("Order access lookup failed:", orderError.message);
+      logError("orders.access_lookup_failed", { errorCode: orderError.code ?? null });
       return NextResponse.json({ error: "Unable to load order." }, { status: 500 });
     }
 
@@ -82,7 +83,7 @@ export async function GET(
       },
     );
   } catch (error) {
-    console.error("Order access error:", error);
+    logError("orders.access_unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json({ error: "Unable to load order." }, { status: 500 });
   }
 }
