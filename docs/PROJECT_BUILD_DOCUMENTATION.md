@@ -1185,7 +1185,20 @@ Required acceptance before this sub-phase is complete:
 - desktop/iPhone acceptance passes;
 - runtime/build verification passes.
 
-### Current status
-**Phase 7.7C — IMPLEMENTED / VERIFICATION OPEN**
+### Verification evidence
+- Supabase timeline migration: **SUCCESSFUL** — user confirmed.
+- Final combined Vercel deployment reached **READY**.
+- Owner acceptance: **all Phase 7.7C tests passed successfully**.
+- All four reporting periods were tested.
+- Timeline metric switching and bucket behavior were tested.
+- Summary/timeline reconciliation was tested.
+- Empty/no-sale periods were tested.
+- Owner-only access was tested.
+- Operations and signed-out access controls were tested.
+- Desktop and iPhone/mobile acceptance was tested.
+- No blocking runtime/build issue was reported during acceptance.
+
+### Result
+**Phase 7.7C — COMPLETE / ACCEPTED**
 
 Production status remains **not yet declared live/production-ready**.
