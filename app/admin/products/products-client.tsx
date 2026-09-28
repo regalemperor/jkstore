@@ -194,7 +194,7 @@ export default function ProductsClient({ canManage, isOwner }: { canManage: bool
                 {result.products.map((product) => (
                   <tr key={product.id}>
                     <td className="px-5 py-4"><p className="font-semibold">{product.name}</p><p className="mt-1 text-xs text-black/45">{product.slug}</p></td>
-                    <td className="px-5 py-4 font-semibold">{formatNaira(product.priceKobo)}</td>{isOwner ? <td className="px-5 py-4">{product.costKobo == null ? <span className="text-black/40">Not set</span> : formatNaira(product.costKobo)}</td> : null}
+                    <td className="px-5 py-4 font-semibold">{formatNaira(product.priceKobo)}</td>{isOwner && (<td className="px-5 py-4">{product.costKobo == null ? <span className="text-black/40">Not set</span> : formatNaira(product.costKobo)}</td>)}
                     <td className="px-5 py-4">{product.inventoryQuantity}</td>
                     <td className="px-5 py-4"><span className="rounded-full border border-black/10 px-2.5 py-1 text-xs font-semibold">{product.isActive ? "Active" : "Inactive"}{product.isFeatured ? " · Featured" : ""}</span></td>
                     <td className="px-5 py-4 text-right">{canManage ? <button type="button" onClick={() => openEdit(product)} className="rounded-xl border border-black/10 px-4 py-2 text-sm font-semibold">Edit</button> : null}</td>
