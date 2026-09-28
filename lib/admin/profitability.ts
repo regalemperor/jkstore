@@ -13,6 +13,7 @@ export type OwnerProfitabilityReport = {
   profitAfterPaymentFeesKobo: number;
   orderCount: number;
   unitsSold: number;
+  missingCostUnits: number;
   products: Array<{
     productId: string | null;
     productName: string;
@@ -57,6 +58,7 @@ export async function getOwnerProfitability(
     profitAfterPaymentFeesKobo: Number(data?.profitAfterPaymentFeesKobo ?? 0),
     orderCount: Number(data?.orderCount ?? 0),
     unitsSold: Number(data?.unitsSold ?? 0),
+    missingCostUnits: Number(data?.missingCostUnits ?? 0),
     products: Array.isArray(data?.products)
       ? data.products.map((product: Record<string, unknown>) => ({
           productId: typeof product.product_id === "string" ? product.product_id : null,
