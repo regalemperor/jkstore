@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
 import { consumeApiRateLimit } from "@/lib/http/rate-limit";
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (reservationError) {
-      console.error("Paystack initialization reservation lookup failed:", reservationError.message);
+      logError("paystack.initialize.reservation_lookup_failed", { errorCode: reservationError.code ?? null });
       return NextResponse.json({ error: "Unable to validate checkout reservation." }, { status: 500 });
     }
 
@@ -142,7 +143,7 @@ export async function POST(request: Request) {
 
     const secretKey = process.env.PAYSTACK_SECRET_KEY?.trim();
     if (!secretKey) {
-      console.error("Paystack initialization failed: PAYSTACK_SECRET_KEY is missing.");
+      logError("paystack.initialize.missing_secret");
       return NextResponse.json({ error: "Payment service is not configured." }, { status: 503 });
     }
 
@@ -199,7 +200,7 @@ export async function POST(request: Request) {
       );
 
     if (transactionError) {
-      console.error("Payment transaction record failed:", transactionError.message);
+      logError("paystack.initialize.transaction_record_failed", { errorCode: transactionError.code ?? null });
       return NextResponse.json({ error: "Unable to record payment transaction." }, { status: 500 });
     }
 
@@ -213,7 +214,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Request body too large." }, { status: 413 });
     }
 
-    console.error("Paystack initialization error:", error);
+    logError("paystack.initialize.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json({ error: "Unable to initialize payment." }, { status: 400 });
   }
 }
