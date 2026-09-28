@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 
 import { requireAdminApi } from "@/lib/auth/admin";
 import { getInventoryHistory } from "@/lib/admin/inventory";
@@ -22,7 +23,7 @@ export async function GET(
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    console.error("Admin inventory history failed:", error);
+    logError("admin.inventory.[productId].unhandled_error", getSafeErrorDetails("Admin inventory history failed:", error));
     return NextResponse.json(
       { error: "Unable to load inventory history." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
