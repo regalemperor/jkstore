@@ -29,9 +29,13 @@ export async function consumeApiRateLimit(
   scope: string,
   windowSeconds: number,
   maxRequests: number,
+  discriminator?: string,
 ): Promise<RateLimitResult> {
   const identity = getClientIdentity(request);
-  const keyHash = hashKey(identity);
+  const keyMaterial = discriminator
+    ? `${identity}:${discriminator}`
+    : identity;
+  const keyHash = hashKey(keyMaterial);
 
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase.rpc("consume_api_rate_limit", {
@@ -43,9 +47,6 @@ export async function consumeApiRateLimit(
 
   if (error || !data?.[0]) {
     console.error("API rate-limit check failed:", error?.message ?? "No result");
-    // Fail open so a rate-limit infrastructure problem cannot take checkout
-    // or payment processing offline. The endpoint's existing validation,
-    // authorization, idempotency, and payment controls remain authoritative.
     return {
       allowed: true,
       remaining: maxRequests,
