@@ -985,7 +985,7 @@ This phase provides **read/operational customer management**. It does not invent
 Those capabilities require a separate customer-account/data model and explicit privacy/business requirements.
 
 ### Acceptance criteria
-Phase 7.6 remains open until:
+Phase 7.6 acceptance criteria were:
 - Supabase migration is applied successfully;
 - customer directory loads for an authorized admin;
 - search works;
@@ -998,6 +998,88 @@ Phase 7.6 remains open until:
 - customer grouping behavior is reviewed against real order data.
 
 ### Current status
-**Phase 7.6 — IMPLEMENTED, ACCEPTANCE PENDING**
+**Phase 7.6 — COMPLETE / ACCEPTED**
+
+User acceptance: all Phase 7.6 customer-management tests were reported successful.
+
+Production status remains **not yet declared live/production-ready**.
+
+
+## Phase 7.7 — Admin Orders, Revenue & Owner Profitability
+
+### Date
+2026-09-28
+
+### Scope
+Phase 7.7 expands the admin system from operational order visibility into business-performance reporting. It is deliberately split into order/revenue operations and a separate owner-only profitability layer.
+
+### Implemented foundation
+- Admin Orders directory with search, status/payment filters and pagination.
+- Secure admin order detail with customer, line items, payment records and order events.
+- UUID validation for order-detail API requests.
+- Server-side admin authorization on order APIs.
+- Revenue remains based on successful payment/order records rather than client-supplied totals.
+- Owner-only Profitability page at `/admin/profitability`.
+- Owner-only profitability API.
+- 24-hour, 7-day, 1-month and 1-year reporting periods.
+- Revenue, COGS, gross profit, payment fees and profit-after-payment-fees metrics.
+- Product-level revenue/cost/profit/margin reporting.
+- Owner-only navigation visibility on desktop and mobile admin navigation.
+
+### Profitability data model decision
+Product selling price and product acquisition cost are separate concepts.
+
+A `products.cost_kobo` field was introduced for the current product cost.
+
+At checkout, the current product cost is snapshotted into `order_items.unit_cost_kobo`. This is essential because changing a product's current cost later must not rewrite the economics of historical orders.
+
+Where historical orders have no trustworthy cost snapshot, the system must not manufacture a cost value. Those historical records require explicit owner cost reconciliation before they can be treated as fully costed profit.
+
+### Security model
+Profitability is private owner business information.
+
+The UI is hidden from non-owner roles, but this is not treated as sufficient security. The profitability API requires an authenticated admin whose role is exactly `owner`, and the database profitability RPC independently verifies the actor role.
+
+The product-cost mutation RPC is also owner-only.
+
+No profitability endpoint is available to customers or ordinary admin/operations users.
+
+### Accounting definitions
+- **Revenue:** successful order value for the selected period, excluding refunded orders.
+- **COGS:** quantity sold multiplied by the recorded historical unit cost.
+- **Gross profit:** revenue minus COGS.
+- **Gross margin:** gross profit divided by revenue.
+- **Payment fees:** recorded successful payment-provider fees.
+- **Profit after payment fees:** gross profit minus payment fees.
+- **Markup:** to be surfaced in the next profitability sub-phase as profit divided by cost.
+- Operating expenses, shipping costs and other overhead are not yet treated as net profit.
+
+### Documentation rule
+Every future profitability metric must have an explicit definition and data source recorded in this document before it is added to the dashboard. Calculations that cannot be supported by reliable stored data must be labeled as estimates or excluded.
+
+### Acceptance gates
+7.7A — Orders/revenue operations:
+- order directory;
+- search/filter/pagination;
+- secure order detail;
+- unauthorized API rejection;
+- invalid order identifier handling;
+- revenue timeline validation.
+
+7.7B — Owner profitability:
+- owner-only UI;
+- non-owner UI/API denial;
+- cost entry/update;
+- historical cost snapshot;
+- margin/markup calculations;
+- product-level profitability;
+- payment-fee treatment;
+- desktop/iPhone acceptance;
+- runtime/build verification.
+
+### Current status
+**Phase 7.7 — IN PROGRESS**
+
+The owner-profitability foundation has been committed to `dev/foundation`. Supabase migration application and deployment/acceptance testing remain required before this sub-phase can be marked complete.
 
 Production status remains **not yet declared live/production-ready**.
