@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { verifyPaystackTransaction } from "@/lib/paystack/verify";
+import { RequestBodyTooLargeError, readJsonBody } from "@/lib/http/body";
 
 function validSignature(rawBody: string, signature: string, secret: string) {
   const expected = createHmac("sha512", secret).update(rawBody).digest("hex");
@@ -21,7 +22,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payment service is not configured." }, { status: 503 });
   }
 
-  const rawBody = await request.text();
+  let rawBody: string;
+
+  try {
+    if (request.headers.get("content-length")) {
+      const declaredLength = Number(request.headers.get("content-length"));
+      if (Number.isSafeInteger(declaredLength) && declaredLength > 128 * 1024) {
+        throw new RequestBodyTooLargeError();
+      }
+    }
+
+    const bytes = await request.arrayBuffer();
+    if (bytes.byteLength > 128 * 1024) {
+      throw new RequestBodyTooLargeError();
+    }
+    rawBody = new TextDecoder().decode(bytes);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
+    }
+    return NextResponse.json({ error: "Invalid webhook request." }, { status: 400 });
+  }
+
   const signature = request.headers.get("x-paystack-signature");
 
   if (!signature || !validSignature(rawBody, signature, secretKey)) {
@@ -38,12 +60,10 @@ export async function POST(request: Request) {
 
   const reference = event.data?.reference?.trim() ?? "";
 
-  if (!reference || !/^[A-Za-z0-9._=-]+$/.test(reference)) {
+  if (!reference || !/^[A-Za-z0-9._=-]+$/.test(reference) || reference.length > 100) {
     return NextResponse.json({ error: "Invalid payment reference." }, { status: 400 });
   }
 
-  // The signed webhook identifies the event, but Paystack's verify endpoint
-  // remains the authoritative source for amount, currency, reference and status.
   try {
     const verified = await verifyPaystackTransaction(reference);
     const supabase = createSupabaseAdminClient();
