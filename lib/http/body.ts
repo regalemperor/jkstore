@@ -7,7 +7,7 @@ export class RequestBodyTooLargeError extends Error {
   }
 }
 
-export async function readJsonBody<T>(request: Request, maxBytes: number): Promise<T> {
+async function readBoundedBytes(request: Request, maxBytes: number) {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
     throw new Error("Invalid request body limit.");
   }
@@ -51,5 +51,13 @@ export async function readJsonBody<T>(request: Request, maxBytes: number): Promi
     offset += chunk.byteLength;
   }
 
-  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+  return bytes;
+}
+
+export async function readTextBody(request: Request, maxBytes: number) {
+  return new TextDecoder().decode(await readBoundedBytes(request, maxBytes));
+}
+
+export async function readJsonBody<T>(request: Request, maxBytes: number): Promise<T> {
+  return JSON.parse(await readTextBody(request, maxBytes)) as T;
 }
