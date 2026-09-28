@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error("Checkout order creation failed:", error.message);
+      logError("checkout.order_creation_failed", { errorCode: error.code ?? null });
       return NextResponse.json({ error: "Unable to create order." }, { status: 409 });
     }
 
