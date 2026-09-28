@@ -34,14 +34,14 @@ function parseProductInput(body: unknown) {
 }
 
 export async function GET(request: Request, context: { params: Promise<{ productId: string }> }) {
-  const { response } = await requireAdminApi();
+  const { admin, response } = await requireAdminApi();
   if (response) return response;
 
   const { productId } = await context.params;
   if (!UUID_RE.test(productId)) return error("Invalid product ID.", 400);
 
   try {
-    const data = await getAdminProduct(productId);
+    const data = await getAdminProduct(productId, admin?.role === "owner");
     if (!data) return error("Product not found.", 404);
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch {
