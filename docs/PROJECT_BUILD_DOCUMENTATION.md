@@ -1237,3 +1237,24 @@ These headers are defense-in-depth controls. They do not replace authentication,
 ### Status
 **Phase 8.1 — IMPLEMENTED / VERIFICATION OPEN**
 
+
+### Phase 8.2 — Request Size & Input Hardening
+**Date:** 2026-09-28
+**Objective:** Reduce abuse/DoS risk from oversized request bodies and tighten critical checkout/payment input boundaries before rate limiting work.
+
+**Implemented:**
+- Added a server-only bounded streaming request-body reader in `lib/http/body.ts`.
+- Checkout POST body capped at 32 KiB; cart length, item quantity, identifiers, customer fields, address fields, and idempotency key are bounded.
+- Paystack initialization POST body capped at 8 KiB and order ID is type/length validated before database lookup.
+- Paystack webhook body capped at 128 KiB while preserving signature verification against the exact raw body.
+- Oversized bodies return HTTP 413 instead of being parsed or processed.
+- Existing server-side order/payment validation remains authoritative; client input is never trusted for price or payment amount.
+
+**Security rationale:**
+- Streaming limits prevent chunked requests from bypassing a simple `Content-Length` check.
+- Limits are endpoint-specific rather than one oversized global allowance.
+- Payment verification continues to rely on Paystack verification and signed webhooks; these changes do not replace payment reconciliation controls.
+
+**Verification:** Deployment/build verification open.
+
+**Status:** **Phase 8.2 — IMPLEMENTED / VERIFICATION OPEN**
