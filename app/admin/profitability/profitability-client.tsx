@@ -13,6 +13,7 @@ type Report = {
   profitAfterPaymentFeesKobo: number;
   orderCount: number;
   unitsSold: number;
+  missingCostUnits: number;
   products: Array<{
     productId: string | null;
     productName: string;
@@ -63,6 +64,7 @@ export default function ProfitabilityClient() {
 
   const grossMargin = report ? margin(report.revenueKobo, report.grossProfitKobo) : 0;
   const afterFeeMargin = report ? margin(report.revenueKobo, report.profitAfterPaymentFeesKobo) : 0;
+  const markup = report && report.cogsKobo > 0 ? (report.grossProfitKobo / report.cogsKobo) * 100 : 0;
 
   return (
     <div>
@@ -103,12 +105,15 @@ export default function ProfitabilityClient() {
           <div className="rounded-3xl border border-black/10 bg-white p-5"><p className="text-sm text-black/50">Gross margin</p><p className="mt-2 text-2xl font-semibold">{grossMargin.toFixed(1)}%</p></div>
           <div className="rounded-3xl border border-black/10 bg-white p-5"><p className="text-sm text-black/50">Margin after payment fees</p><p className="mt-2 text-2xl font-semibold">{afterFeeMargin.toFixed(1)}%</p></div>
           <div className="rounded-3xl border border-black/10 bg-white p-5"><p className="text-sm text-black/50">Payment fees</p><p className="mt-2 text-2xl font-semibold">{formatNaira(report.paymentFeesKobo)}</p></div>
+          <div className="rounded-3xl border border-black/10 bg-white p-5"><p className="text-sm text-black/50">Markup on cost</p><p className="mt-2 text-2xl font-semibold">{markup.toFixed(1)}%</p></div>
         </section>
 
         <section className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-3xl border border-black/10 bg-white p-5"><p className="text-sm text-black/50">Successful orders</p><p className="mt-2 text-2xl font-semibold">{report.orderCount.toLocaleString()}</p></div>
           <div className="rounded-3xl border border-black/10 bg-white p-5"><p className="text-sm text-black/50">Units sold</p><p className="mt-2 text-2xl font-semibold">{report.unitsSold.toLocaleString()}</p></div>
         </section>
+
+        <section className="mt-4 rounded-3xl border border-black/10 bg-white p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="font-semibold">Cost coverage</p><p className="mt-1 text-sm text-black/50">Units sold without a historical cost snapshot are excluded from COGS/profit calculations.</p></div><div className="text-right"><p className="text-2xl font-semibold">{report.missingCostUnits.toLocaleString()}</p><p className="text-xs text-black/45">uncosted units</p></div></div></section>
 
         <section className="mt-8 overflow-hidden rounded-3xl border border-black/10 bg-white shadow-sm">
           <div className="border-b border-black/10 p-5"><h3 className="font-semibold">Product profitability</h3><p className="mt-1 text-sm text-black/50">Products with recorded cost snapshots in successful orders.</p></div>
@@ -120,6 +125,7 @@ export default function ProfitabilityClient() {
                 <div><p className="text-xs text-black/45">Revenue</p><p className="font-semibold">{formatNaira(product.revenueKobo)}</p></div>
                 <div><p className="text-xs text-black/45">Profit</p><p className="font-semibold">{formatNaira(product.grossProfitKobo)}</p></div>
                 <div><p className="text-xs text-black/45">Margin</p><p className="font-semibold">{margin(product.revenueKobo, product.grossProfitKobo).toFixed(1)}%</p></div>
+                <div><p className="text-xs text-black/45">Markup</p><p className="font-semibold">{product.cogsKobo > 0 ? ((product.grossProfitKobo / product.cogsKobo) * 100).toFixed(1) : "—"}%</p></div>
               </div>
             ))}
           </div>}
