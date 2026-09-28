@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { RequestBodyTooLargeError, readJsonBody } from "@/lib/http/body";
 
 type CheckoutItem = { productId?: string; quantity?: number };
 type ValidCheckoutItem = { productId: string; quantity: number };
@@ -26,6 +27,7 @@ function isValidCheckoutItem(item: CheckoutItem): item is ValidCheckoutItem {
 
   return (
     typeof item.productId === "string" &&
+    item.productId.length <= 100 &&
     typeof quantity === "number" &&
     Number.isInteger(quantity) &&
     quantity >= 1 &&
@@ -33,15 +35,19 @@ function isValidCheckoutItem(item: CheckoutItem): item is ValidCheckoutItem {
   );
 }
 
+function isBoundedString(value: unknown, maxLength: number) {
+  return typeof value === "string" && value.trim().length > 0 && value.length <= maxLength;
+}
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as CheckoutRequest;
+    const body = await readJsonBody<CheckoutRequest>(request, 32 * 1024);
     const items = Array.isArray(body.items) ? body.items : [];
 
     const customer = body.customer;
     const idempotencyKey = body.idempotencyKey;
 
-    if (!items.length || !customer || !idempotencyKey) {
+    if (!items.length || items.length > 50 || !customer || !idempotencyKey) {
       return NextResponse.json({ error: "Missing checkout information." }, { status: 400 });
     }
 
@@ -49,8 +55,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid cart items." }, { status: 400 });
     }
 
-    if (typeof customer.email !== "string" || typeof customer.name !== "string") {
-      return NextResponse.json({ error: "Name and email are required." }, { status: 400 });
+    if (
+      !isBoundedString(customer.email, 254) ||
+      !isBoundedString(customer.name, 120) ||
+      !isBoundedString(idempotencyKey, 128)
+    ) {
+      return NextResponse.json({ error: "Invalid customer or checkout information." }, { status: 400 });
+    }
+
+    if (customer.phone !== undefined && customer.phone.length > 40) {
+      return NextResponse.json({ error: "Invalid phone number." }, { status: 400 });
+    }
+
+    const address = customer.address;
+    if (
+      address &&
+      (!isBoundedString(address.line1, 200) ||
+        (address.line2 !== undefined && address.line2.length > 200) ||
+        !isBoundedString(address.city, 100) ||
+        !isBoundedString(address.state, 100))
+    ) {
+      return NextResponse.json({ error: "Invalid shipping address." }, { status: 400 });
     }
 
     const guestAccessToken = randomBytes(32).toString("base64url");
@@ -66,7 +91,7 @@ export async function POST(request: Request) {
       p_customer_name: customer.name.trim(),
       p_customer_phone: customer.phone?.trim() ?? "",
       p_shipping_address: customer.address ?? {},
-      p_idempotency_key: idempotencyKey,
+      p_idempotency_key: idempotencyKey.trim(),
       p_guest_access_token_hash: guestAccessTokenHash,
       p_guest_access_expires_at: guestAccessExpiresAt,
     });
@@ -101,7 +126,11 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "Request body is too large." }, { status: 413 });
+    }
+
     return NextResponse.json({ error: "Invalid checkout request." }, { status: 400 });
   }
 }
