@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
-    logError("admin.orders.unhandled_error", getSafeErrorDetails("Admin orders list failed:", error));
+    logError("admin.orders.unhandled_error", getSafeErrorDetails(error));
     return NextResponse.json(
       { error: "Unable to load orders." },
       { status: 500, headers: { "Cache-Control": "no-store" } },
