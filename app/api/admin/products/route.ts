@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { requireAdminApi } from "@/lib/auth/admin";
 import { getAdminProducts } from "@/lib/admin/products";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
