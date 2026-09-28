@@ -4,6 +4,19 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export type ProfitabilityPeriod = "24h" | "7d" | "30d" | "1y";
 
+export type ProfitabilityTimelinePoint = {
+  bucketAt: string;
+  revenueKobo: number;
+  costedRevenueKobo: number;
+  cogsKobo: number;
+  paymentFeesKobo: number;
+  grossProfitKobo: number;
+  profitAfterPaymentFeesKobo: number;
+  orderCount: number;
+  unitsSold: number;
+  missingCostUnits: number;
+};
+
 export type OwnerProfitabilityReport = {
   revenueKobo: number;
   costedRevenueKobo: number;
@@ -70,4 +83,38 @@ export async function getOwnerProfitability(
         }))
       : [],
   };
+}
+
+
+export async function getOwnerProfitabilityTimeline(
+  actorId: string,
+  period: ProfitabilityPeriod,
+): Promise<ProfitabilityTimelinePoint[]> {
+  const end = new Date();
+  const start = getStart(period, end);
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase.rpc("owner_profitability_timeline", {
+    p_start_at: start.toISOString(),
+    p_end_at: end.toISOString(),
+    p_period: period,
+    p_actor_id: actorId,
+  });
+
+  if (error) throw new Error("Unable to load profitability timeline.");
+
+  const rows = Array.isArray(data) ? data : [];
+
+  return rows.map((point: Record<string, unknown>) => ({
+    bucketAt: String(point.bucketAt ?? ""),
+    revenueKobo: Number(point.revenueKobo ?? 0),
+    costedRevenueKobo: Number(point.costedRevenueKobo ?? 0),
+    cogsKobo: Number(point.cogsKobo ?? 0),
+    paymentFeesKobo: Number(point.paymentFeesKobo ?? 0),
+    grossProfitKobo: Number(point.grossProfitKobo ?? 0),
+    profitAfterPaymentFeesKobo: Number(point.profitAfterPaymentFeesKobo ?? 0),
+    orderCount: Number(point.orderCount ?? 0),
+    unitsSold: Number(point.unitsSold ?? 0),
+    missingCostUnits: Number(point.missingCostUnits ?? 0),
+  }));
 }
