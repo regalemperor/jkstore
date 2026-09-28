@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual, createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readTextBody, RequestBodyTooLargeError } from "@/lib/http/body";
+import { consumeApiRateLimit } from "@/lib/http/rate-limit";
 import { verifyPaystackTransaction } from "@/lib/paystack/verify";
 
 function validSignature(rawBody: string, signature: string, secret: string) {
@@ -20,6 +21,21 @@ export async function POST(request: Request) {
 
   if (!secretKey) {
     return NextResponse.json({ error: "Payment service is not configured." }, { status: 503 });
+  }
+
+  const rateLimit = await consumeApiRateLimit(request, "paystack-webhook", 60, 120);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Webhook request rate limit exceeded." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+          "X-RateLimit-Remaining": "0",
+        },
+      },
+    );
   }
 
   let rawBody: string;
