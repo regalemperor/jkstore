@@ -1115,3 +1115,77 @@ Verification remains open for:
 The owner-profitability foundation has been committed to `dev/foundation`. Supabase migration application and deployment/acceptance testing remain required before this sub-phase can be marked complete.
 
 Production status remains **not yet declared live/production-ready**.
+
+
+## Phase 7.7C — Revenue & Profitability Timeline
+
+### Date
+2026-09-28
+
+### Scope
+The owner profitability dashboard now includes a time-series view for the requested reporting windows:
+- 24 hours — hourly buckets
+- 7 days — daily buckets
+- 1 month — daily buckets
+- 1 year — monthly buckets
+
+### Data architecture
+A dedicated owner-only database function, `owner_profitability_timeline(...)`, generates complete time buckets including periods with no sales.
+
+Each bucket returns:
+- revenue
+- costed revenue
+- COGS
+- payment-provider fees
+- gross profit
+- profit after payment fees
+- successful order count
+- costed units sold
+- uncosted units
+
+The timeline uses Africa/Lagos local time for bucket boundaries so the reporting view matches the store's operating timezone.
+
+### Security
+The timeline RPC independently checks that the supplied actor has the exact `owner` role.
+
+The admin API also requires an authenticated owner before calling the database function.
+
+No timeline data is exposed to customers or non-owner admin roles.
+
+### UI
+The owner profitability page now includes:
+- Revenue & profitability timeline
+- metric selector for Revenue, Gross profit and Profit after fees
+- period selector for 24h, 7d, 1 month and 1 year
+- peak/lowest bucket indicators
+- responsive chart treatment for desktop and iPhone
+- empty-bucket support so periods without sales remain visible
+
+### Accounting rules
+Timeline calculations use the same accounting definitions as the profitability summary:
+- revenue is based on successful, non-refunded orders;
+- COGS uses historical order-item cost snapshots;
+- uncosted units are not treated as zero-cost profit;
+- payment fees come from successful payment transactions;
+- gross profit is costed revenue minus COGS;
+- profit after payment fees is gross profit minus recorded payment fees.
+
+### Verification status
+Implementation committed to `dev/foundation`.
+
+Required acceptance before this sub-phase is complete:
+- Supabase migration applies successfully;
+- deployment reaches READY;
+- all four reporting periods load;
+- hourly/daily/monthly bucket granularity is correct;
+- summary totals reconcile with timeline totals;
+- empty periods render correctly;
+- owner-only access remains enforced;
+- Operations and signed-out users cannot retrieve timeline data;
+- desktop/iPhone acceptance passes;
+- runtime/build verification passes.
+
+### Current status
+**Phase 7.7C — IMPLEMENTED / VERIFICATION OPEN**
+
+Production status remains **not yet declared live/production-ready**.
