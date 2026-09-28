@@ -25,7 +25,7 @@ async function readBoundedBytes(request: Request, maxBytes: number) {
   }
 
   const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBufferLike>[] = [];
   let total = 0;
 
   try {
