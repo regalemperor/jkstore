@@ -1312,3 +1312,40 @@ Acceptance remains gated on:
 6. Confirming rate-limit counters do not expose raw client IPs.
 7. Confirming signed-out/admin authorization protections remain unchanged.
 8. Confirming no horizontal overflow or customer-facing UI regression.
+
+
+## Phase 8 — Observability & Controlled Error Handling
+
+### Objective
+Make production failures diagnosable by the owner/developer without exposing database, payment-provider, authentication, stack-trace, or implementation details to customers.
+
+### Research validation
+- Next.js recommends route-segment `error.tsx` boundaries for graceful production error UI.
+- Vercel provides runtime logs for deployed Functions and routes.
+- Supabase provides API, Postgres, Auth, Storage, and related service logs; logging should be scoped to avoid sensitive-value exposure and unnecessary log volume.
+
+### Implemented controls
+- Added `lib/http/logger.ts` with structured JSON error events.
+- Server-side logs use stable event names and safe error metadata rather than dumping raw exceptions.
+- Critical checkout, order-access, Paystack initialization, verification, webhook, and admin API failures were standardized.
+- Customer-facing API responses continue to return controlled generic messages.
+- Added root `app/error.tsx` so unexpected App Router failures render a safe retry UI instead of exposing implementation details.
+- Existing payment/order security controls were not changed.
+
+### Logging principles
+- Never log Paystack secret keys, authorization URLs, access tokens, guest order cookies, customer payment data, or raw request bodies.
+- Prefer error codes/statuses and stable event names.
+- Keep detailed provider/database diagnostics inside protected platform logs rather than API responses.
+- Supabase/Vercel logs remain the operational investigation surfaces.
+
+### Verification gate
+1. Build/deployment succeeds.
+2. Normal storefront pages still load.
+3. Normal checkout and Paystack payment flow still pass.
+4. Invalid checkout/payment requests return controlled errors only.
+5. Forced server-side failures do not expose stack traces or database/provider messages to customers.
+6. Vercel runtime logs show structured error events.
+7. Admin APIs remain authorization-protected.
+8. Mobile UI remains usable with no horizontal overflow.
+
+**Status: IMPLEMENTED / VERIFICATION OPEN**
