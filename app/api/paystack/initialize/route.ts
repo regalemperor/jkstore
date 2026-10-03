@@ -157,7 +157,7 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         email: order.customer_email.trim(),
-        amount: String(amount),
+        amount: String(expectedCustomerCharge),
         currency: "NGN",
         reference: order.payment_reference,
         callback_url: `${origin}/checkout/complete`,
