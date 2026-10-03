@@ -4,6 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
 import { consumeApiRateLimit } from "@/lib/http/rate-limit";
 import { calculateExpectedCustomerChargeKobo, getPaystackFeeMode } from "@/lib/paystack/fees";
+import { getGuestOrderAccessHash, isValidOrderUuid } from "@/lib/order-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -61,11 +62,18 @@ export async function POST(request: Request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const guestAccessHash = await getGuestOrderAccessHash();
+
+    if (!guestAccessHash) {
+      return NextResponse.json({ error: "Order access is not available on this device." }, { status: 403 });
+    }
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .select("id, status, payment_status, total_kobo, customer_email, payment_reference")
       .eq("id", body.orderId.trim())
+      .eq("guest_access_token_hash", guestAccessHash)
+      .gt("guest_access_expires_at", new Date().toISOString())
       .single();
 
     if (orderError || !order) {
