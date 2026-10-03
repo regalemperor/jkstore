@@ -63,9 +63,9 @@ export async function GET(
       ]);
 
     if (itemsError || eventsError) {
-      console.error("Order detail lookup failed:", {
-        items: itemsError?.message ?? null,
-        events: eventsError?.message ?? null,
+      logError("orders.details_lookup_failed", {
+        itemsErrorCode: itemsError?.code ?? null,
+        eventsErrorCode: eventsError?.code ?? null,
       });
       return NextResponse.json({ error: "Unable to load order details." }, { status: 500 });
     }
