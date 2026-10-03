@@ -34,8 +34,7 @@ export async function POST(request: Request) {
 
     if (
       typeof body.orderId !== "string" ||
-      !body.orderId.trim() ||
-      body.orderId.length > 100
+      !isValidOrderUuid(body.orderId.trim())
     ) {
       return NextResponse.json({ error: "Order ID is required." }, { status: 400 });
     }
@@ -77,11 +76,8 @@ export async function POST(request: Request) {
       .single();
 
     if (orderError || !order) {
-      console.error("Paystack initialization order lookup failed:", {
-        code: orderError?.code ?? null,
-        message: orderError?.message ?? "Order not found",
-        details: orderError?.details ?? null,
-        hint: orderError?.hint ?? null,
+      logError("paystack.initialize.order_lookup_failed", {
+        errorCode: orderError?.code ?? null,
       });
 
       const isSupabaseAuthFailure =
@@ -179,10 +175,8 @@ export async function POST(request: Request) {
     const paystackData = await paystackResponse.json();
 
     if (!paystackResponse.ok || !paystackData?.status || !paystackData?.data?.authorization_url) {
-      console.error("Paystack initialization failed:", {
+      logError("paystack.initialize.provider_failed", {
         status: paystackResponse.status,
-        message: paystackData?.message ?? "Unknown error",
-        reference: order.payment_reference,
       });
       return NextResponse.json({ error: "Unable to initialize payment." }, { status: 502 });
     }
