@@ -1,7 +1,8 @@
-import { createHash, randomBytes } from "node:crypto";
 import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getGuestOrderAccessHash } from "@/lib/order-access";
+import { consumeApiRateLimit } from "@/lib/http/rate-limit";
 import { verifyPaystackTransaction } from "@/lib/paystack/verify";
 
 function isSafeReference(value: string) {
@@ -9,6 +10,15 @@ function isSafeReference(value: string) {
 }
 
 export async function GET(request: Request) {
+  const ipRateLimit = await consumeApiRateLimit(request, "paystack-verify", 60, 20);
+
+  if (!ipRateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many payment verification attempts. Please try again shortly." },
+      { status: 429, headers: { "Retry-After": String(ipRateLimit.retryAfterSeconds), "X-RateLimit-Remaining": "0" } },
+    );
+  }
+
   const reference = new URL(request.url).searchParams.get("reference")?.trim() ?? "";
 
   if (!isSafeReference(reference)) {
@@ -16,6 +26,12 @@ export async function GET(request: Request) {
   }
 
   try {
+    const guestAccessHash = await getGuestOrderAccessHash();
+
+    if (!guestAccessHash) {
+      return NextResponse.json({ error: "Order access is not available on this device." }, { status: 403 });
+    }
+
     const verified = await verifyPaystackTransaction(reference);
     const supabase = createSupabaseAdminClient();
 
@@ -31,6 +47,23 @@ export async function GET(request: Request) {
 
     if (verified.reference !== payment.provider_reference) {
       return NextResponse.json({ error: "Payment reference mismatch." }, { status: 409 });
+    }
+
+    const { data: accessOrder, error: accessError } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("id", payment.order_id)
+      .eq("guest_access_token_hash", guestAccessHash)
+      .gt("guest_access_expires_at", new Date().toISOString())
+      .maybeSingle();
+
+    if (accessError) {
+      logError("paystack.verify.order_access_lookup_failed", { errorCode: accessError.code ?? null });
+      return NextResponse.json({ error: "Unable to validate order access." }, { status: 500 });
+    }
+
+    if (!accessOrder) {
+      return NextResponse.json({ error: "Payment reference is not associated with this checkout session." }, { status: 403 });
     }
 
     const { data, error } = await supabase.rpc("reconcile_paystack_payment", {
@@ -56,41 +89,7 @@ export async function GET(request: Request) {
       verifiedStatus: verified.status,
     });
 
-    if (data[0].payment_status === "success") {
-      const guestAccessToken = randomBytes(32).toString("base64url");
-      const guestAccessTokenHash = createHash("sha256")
-        .update(guestAccessToken, "utf8")
-        .digest("hex");
-      const guestAccessExpiresAt = new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000,
-      ).toISOString();
 
-      const { error: accessError } = await supabase
-        .from("orders")
-        .update({
-          guest_access_token_hash: guestAccessTokenHash,
-          guest_access_expires_at: guestAccessExpiresAt,
-        })
-        .eq("id", payment.order_id);
-
-      if (accessError) {
-        logError("paystack.verify.order_access_refresh_failed", { errorCode: accessError.code ?? null });
-        return NextResponse.json(
-          { error: "Payment verified, but order access could not be secured." },
-          { status: 500 },
-        );
-      }
-
-      response.cookies.set({
-        name: "__Host-jkstore-order-access",
-        value: guestAccessToken,
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        path: "/",
-        maxAge: 7 * 24 * 60 * 60,
-      });
-    }
 
     return response;
   } catch (error) {
