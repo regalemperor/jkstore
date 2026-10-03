@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { getSafeErrorDetails, logError } from "@/lib/http/logger";
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/http/body";
 import { consumeApiRateLimit } from "@/lib/http/rate-limit";
 
@@ -106,7 +107,15 @@ export async function POST(request: Request) {
       .digest("hex");
     const guestAccessExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const supabase = await createSupabaseServerClient();
+    const serverSupabase = await createSupabaseServerClient();
+    const { data: userData, error: userError } = await serverSupabase.auth.getUser();
+
+    if (userError) {
+      logError("checkout.auth_lookup_failed", { errorCode: userError.name ?? null });
+      return NextResponse.json({ error: "Unable to create order." }, { status: 503 });
+    }
+
+    const supabase = createSupabaseAdminClient();
     const { data, error } = await supabase.rpc("create_pending_order", {
       p_items: items,
       p_customer_email: customer.email.trim(),
@@ -116,6 +125,7 @@ export async function POST(request: Request) {
       p_idempotency_key: idempotencyKey,
       p_guest_access_token_hash: guestAccessTokenHash,
       p_guest_access_expires_at: guestAccessExpiresAt,
+      p_user_id: userData.user?.id ?? null,
     });
 
     if (error) {
